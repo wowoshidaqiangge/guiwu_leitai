@@ -75,6 +75,7 @@
         </div>
         <div class="right_item_deviceInfo">
           <el-button type="danger" size="small" @click="delDeviceBt">删除设备</el-button>
+          <el-button type="danger" size="small" @click="editDeviceBt" v-if="isnb">修改网关</el-button>
         </div>
       </div>
     </div>
@@ -149,7 +150,8 @@ export default {
         }]
       },
       deleteDialogVisible: false,       // 删除设备对话框标志位
-      deviceInfoLoading: null           // 设备操作loading标志位
+      deviceInfoLoading: null,           // 设备操作loading标志位
+      isnb: false
     }
   },
   //
@@ -160,7 +162,16 @@ export default {
     // 获取back调用关键参数
     this.param.userId = sessionGetStore('userId')
     this.param.Authorization = sessionGetStore('Authorization')
-    this.param.sn = sessionGetStore('deviceSNNow')
+    let isnb = sessionGetStore('isnb')
+   
+    if (isnb === 'true') {
+      this.isnb = true
+      this.param.sn = sessionGetStore('nbmac')
+    } else {
+      this.isnb = false
+      this.param.sn = sessionGetStore('deviceSNNow')
+    }
+    
     // 分组管理/设备添加/用户管理 按钮显示判断
     if (sessionGetStore('userId') === sessionGetStore('userIdMe')) {
       // 自己
@@ -255,6 +266,9 @@ export default {
       }
       this.deleteDialogVisible = true
       console.log('删除设备（打开对话框）')
+    },
+    editDeviceBt () {
+      this.$bus.$emit('editnb', this.devInfo.deviceId)
     },
     // 设备删除（对话框确认）
     deleteDeviceBt: function () {

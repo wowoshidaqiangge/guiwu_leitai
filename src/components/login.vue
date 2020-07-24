@@ -475,6 +475,11 @@ export default {
       let Authorization = 'Bearer' + ' ' + info.data.token
       this.$store.commit('setAuthorization', Authorization)
       // 浏览器本地存储（避免用户刷新页面数据丢失）
+      
+      sessionSetStore('sysName', info.data.sysName)
+      sessionSetStore('sysNameMe', info.data.sysName)
+      sessionSetStore('logo', info.data.logo)
+      sessionSetStore('logoMe', info.data.logo)
       sessionSetStore('name', info.data.name)
       sessionSetStore('nameMe', info.data.name)
       sessionSetStore('userMap', info.data.map) // 地图主题

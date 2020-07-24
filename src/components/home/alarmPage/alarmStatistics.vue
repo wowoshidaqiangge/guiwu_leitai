@@ -88,7 +88,19 @@ export default {
         {
           label: '电压值超下限报警',
           prop: 'warnType11'
-        }
+        },
+        {
+          label: '电流值超上限报警',
+          prop: 'warnType12'
+        },
+        {
+          label: '雷击峰值超上限报警',
+          prop: 'warnType13'
+        },
+        {
+          label: '接地电阻阻值超上限报警',
+          prop: 'warnType14'
+        },
       ],
       bjtimer: null, // 定时器查询当前报警
       max_table_height: null // 表格高度
@@ -147,7 +159,10 @@ export default {
               warnType8: '-',
               warnType9: '-',
               warnType10: '-',
-              warnType11: '-'
+              warnType11: '-',
+              warnType12: '-',
+              warnType13: '-',
+              warnType14: '-'
             }
             var warnList = response.data[i].warnNumberList
             for (let j = 0; j < warnList.length; j++) {

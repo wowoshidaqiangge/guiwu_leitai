@@ -13,14 +13,17 @@
   "dependencies": {
     "ali-oss": "^6.1.0",
     "axios": "^0.18.0",
+    "draggable": "^4.2.0",
     "echarts": "^4.2.0-rc.2",
     "element-ui": "^2.8.2",
     "file-saver": "^2.0.0",
     "jquery": "^3.3.1",
-    "stompjs": "^2.3.3",
     "plupload": "^2.3.6",
+    "sortablejs": "^1.10.2",
+    "stompjs": "^2.3.3",
     "vue": "^2.5.2",
     "vue-router": "^3.0.1",
+    "vuedraggable": "^2.24.0",
     "vuex": "^3.0.1",
     "xlsx": "^0.14.1"
   },

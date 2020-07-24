@@ -158,6 +158,10 @@ export default {
         {
           label: '最近1周',
           value: 7
+        },
+        {
+          label: '实时',
+          value: 0
         }
       ],
       // 获取到的当前首页配置
@@ -1061,6 +1065,7 @@ export default {
     // 获取用户统计模块初始设置
     getIndexSettings () {
       back.getIndexModule(this.param).then(function (response) {
+        // debugger
         if (response.errno !== 0) {
           this.notificationInfo('错误提示', response.error)
         } else {
@@ -1284,6 +1289,12 @@ export default {
           }
         }
       }
+     
+      this.moduleList.map(it => {
+        if (it.contentType === 'electricResistanceUpper') {
+          it.time = 0
+        }
+      })
       console.log(this.moduleList)
       this.param.moduleList = this.moduleList
       // 判断是设置还是修改

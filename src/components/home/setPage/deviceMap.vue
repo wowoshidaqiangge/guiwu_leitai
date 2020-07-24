@@ -55,7 +55,12 @@ export default {
   //
   // 生命周期钩子--创建期
   created: function () {
-    this.param.sn = sessionGetStore('deviceSNNow')
+    if (sessionGetStore('isnb') === 'true') {
+      this.param.sn = sessionGetStore('nbmac')
+    } else {
+      this.param.sn = sessionGetStore('deviceSNNow')
+    }
+  
     this.param.userId = sessionGetStore('userId')
     this.param.Authorization = sessionGetStore('Authorization')
     // 获取用户的地图主题

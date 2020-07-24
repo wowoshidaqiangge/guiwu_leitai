@@ -10,14 +10,14 @@
           element-loading-background="rgba(0, 0, 0, 0.8)"
           :data="alarmTableData"
           border
-          style="width: 100%"
+          class="alartable"
           :max-height="max_table_height">
           <el-table-column prop="number" label="序号" header-align="center" width="100px"></el-table-column>
           <el-table-column prop="deviceName" label="设备名称" header-align="center" min-width="10%"></el-table-column>
           <el-table-column prop="streamName" label="监控点名称" header-align="center" min-width="20%"></el-table-column>
           <el-table-column prop="name" label="触发器名称" header-align="center" min-width="10%"></el-table-column>
           <el-table-column prop="factor" label="触发条件" header-align="center" min-width="20%"></el-table-column>
-          <el-table-column prop="content" label="报警内容" header-align="center" min-width="20%"></el-table-column>
+          <el-table-column prop="content" label="报警内容" header-align="center" min-width="19%"></el-table-column>
           <el-table-column label="操作" header-align="center" min-width="10%">
             <template slot-scope="scope">
               <el-button type="text" size="small" icon="el-icon-edit" v-show="(param.auth <= shareAdminAuth)" @click="registerEditInitBt(scope.$index, scope.row)">编辑</el-button>
@@ -36,12 +36,39 @@
           <el-form-item label="触发器名称" :label-width="formLabelWidth">
             <el-input v-model="item.name" placeholder="请输入触发器名称"></el-input>
           </el-form-item>
-          <el-form-item label="报警类型" :label-width="formLabelWidth">
+          <!-- <el-form-item label="报警类型" :label-width="formLabelWidth" v-if="!isnb">
             <el-cascader
               :options="monitorTypeOption"
               v-model="item.currentMonitorType"
               @change="monitorChange($event, index)">
-              <!-- :show-all-levels="false" -->
+            
+            </el-cascader>
+          </el-form-item> -->
+           <el-form-item label="报警类型" :label-width="formLabelWidth">
+            <el-select v-model="item.warnType" placeholder="请选择">
+              <el-option
+                v-for="item in monitorTypeOption1"
+                :key="item.warnType"
+                :label="item.name"
+                :value="item.warnType">
+              </el-option>
+            </el-select>
+          </el-form-item>
+          <el-form-item label="监控点" :label-width="formLabelWidth" v-if="isnb">
+            <el-cascader
+              v-model="item.streamId"
+              :options="monitorTypeOption2"
+              :props="{ label: 'name', value:'streamId',children:'streams' }"
+              @change="monitoradd($event, index)"
+             >
+            </el-cascader>
+          </el-form-item>
+          <el-form-item label="监控点" :label-width="formLabelWidth" v-if="!isnb">
+            <el-cascader
+              v-model="item.streamId"
+              :options="monitorTypeOption3"
+              :props="{ label: 'name', value:'streamId',children:'streams'}"
+             >
             </el-cascader>
           </el-form-item>
           <el-form-item label="类型" :label-width="formLabelWidth">
@@ -77,12 +104,40 @@
           <el-form-item label="触发器名称" :label-width="formLabelWidth">
             <el-input v-model="editAlarmForm.name" placeholder="请输入触发器名称"></el-input>
           </el-form-item>
-          <el-form-item label="报警类型" :label-width="formLabelWidth">
+          <!-- <el-form-item label="报警类型" :label-width="formLabelWidth" v-if="!isnb">
             <el-cascader
               :options="monitorTypeOption"
               v-model="editAlarmForm.currentMonitorType"
               @change="editAlarmChange($event)">
-              <!-- :show-all-levels="false" -->
+              
+            </el-cascader>
+          </el-form-item> -->
+           <el-form-item label="报警类型" :label-width="formLabelWidth">
+            <el-select v-model="editAlarmForm.warnType" placeholder="请选择">
+              <el-option
+                v-for="item in monitorTypeOption1"
+                :key="item.warnType"
+                :label="item.name"
+                :value="item.warnType">{{item.name}}
+              </el-option>
+            </el-select>
+          </el-form-item>
+          <el-form-item label="监控点" :label-width="formLabelWidth" v-if="isnb">
+            <el-cascader
+              v-model="editAlarmForm.streamId"
+              :options="monitorTypeOption2"
+              :props="{ label: 'name', value:'streamId',children:'streams' }"
+              @change="monitoradd($event)"
+             >
+            </el-cascader>
+          </el-form-item>
+          <el-form-item label="监控点" :label-width="formLabelWidth" v-if="!isnb">
+            <el-cascader
+              v-model="editAlarmForm.streamId"
+              :options="monitorTypeOption3"
+              :props="{ label: 'name', value:'streamId',children:'streams' }"
+              @change="monitoradd($event)"
+             >
             </el-cascader>
           </el-form-item>
           <el-form-item label="类型" :label-width="formLabelWidth">
@@ -120,6 +175,10 @@ export default {
   // VUE内部数据
   data () {
     return {
+      isnb: false,
+      monitorTypeOption2: [],
+      monitorTypeOption1: [],
+      monitorTypeOption3: [],
       // 参数，用于API请求
       param: {
         'userId': '',
@@ -163,18 +222,22 @@ export default {
           selecteLabel: '', // 当前触发器选择的报警类型label
           // 当前触发器选择了监控选项后，对应的类型（type）、数值（threshold）的可能
           typeAllOption: [
-            // {
-            //   label: '>',
-            //   value: '>'
-            // },
-            // {
-            //   label: '<',
-            //   value: '<'
-            // },
-            // {
-            //   label: '=',
-            //   value: '=='
-            // }
+            {
+              label: '>',
+              value: '>'
+            },
+            {
+              label: '<',
+              value: '<'
+            },
+            {
+              label: '=',
+              value: '=='
+            },
+            {
+              label: '变化',
+              value: 'change'
+            }
           ],
           thresholdOption: {
             input: false,
@@ -200,18 +263,22 @@ export default {
         selecteLabel: '', // 当前触发器选择的报警类型label
         // 当前触发器选择了监控选项后，对应的类型（type）、数值（threshold）的可能
         typeAllOption: [
-          // {
-          //   label: '>',
-          //   value: '>'
-          // },
-          // {
-          //   label: '<',
-          //   value: '<'
-          // },
-          // {
-          //   label: '=',
-          //   value: '=='
-          // }
+          {
+            label: '>',
+            value: '>'
+          },
+          {
+            label: '<',
+            value: '<'
+          },
+          {
+            label: '=',
+            value: '=='
+          },
+          {
+            label: '变化',
+            value: 'change'
+          }
         ],
         thresholdOption: {
           input: false,
@@ -247,7 +314,12 @@ export default {
           {
             label: '=',
             value: '=='
+          },
+          {
+            label: '变化',
+            value: 'change'
           }
+          
         ],
         thresholdOption: {
           input: false,
@@ -274,6 +346,7 @@ export default {
       formLabelWidth: '120px',
       loadingFlag: false,
       max_table_height: null // 表格高度
+      
     }
   },
   //
@@ -287,22 +360,27 @@ export default {
     this.param.sn = sessionGetStore('deviceSNNow')
     // 修改表格最大高度
     this.max_table_height = document.documentElement.clientHeight - 195
+    if (sessionGetStore('isnb') === 'true') {
+      this.isnb = true
+    }
   },
   // 生命周期，安装期
   mounted: async function () {
-    try {
+    // try {
       this.alarmTableData = []  // 初始化表格内容
       // 获取网关下设备列表信息
-      await this.backDevInfoQue()
+      this.backDevInfoQuepy()
       // // 用户设备权限查询
       // this.backUserDevAuthQue()
       // 查询当前的报警登记记录
       this.backTriQueryList()
+      this.getnbwarnType()
+      this.getnbwarnType2()
       // // 查询后台的所有监控点信息（重新渲染组件时操作）
       // this.backMonitorQueryAll()
-    } catch (err) {
-      console.log(err)
-    }
+    // } catch (err) {
+    //   console.log(err)
+    // }
   },
   //
   // *********************方法函数***********************
@@ -318,18 +396,22 @@ export default {
           selecteLabel: '', // 当前触发器选择的报警类型label
           // 当前触发器选择了监控选项后，对应的类型（type）、数值（threshold）的可能
           typeAllOption: [
-            // {
-            //   label: '>',
-            //   value: '>'
-            // },
-            // {
-            //   label: '<',
-            //   value: '<'
-            // },
-            // {
-            //   label: '=',
-            //   value: '=='
-            // }
+            {
+              label: '>',
+              value: '>'
+            },
+            {
+              label: '<',
+              value: '<'
+            },
+            {
+              label: '=',
+              value: '=='
+            },
+            {
+              label: '变化',
+              value: 'change'
+            }
           ],
           thresholdOption: {
             input: false,
@@ -352,6 +434,8 @@ export default {
     },
     // 触发器编辑，修改当前行的信息(编辑初始化)
     registerEditInitBt: function (index, row) {
+      let arr = [row.mac, row.streamId]
+      // debugger
       console.log(row)
       // 编辑触发器的表单对象---更新
       console.log(this.monitorTypeOption)
@@ -381,6 +465,10 @@ export default {
           {
             label: '=',
             value: '=='
+          },
+          {
+            label: '变化',
+            value: 'change'
           }
         ],
         thresholdOption: {
@@ -393,7 +481,7 @@ export default {
         mac: '',            // 设备mac
         name: row.name,           // 触发器名称---1
         streamName: row.streamName,     // 监控点名称---2
-        streamId: row.streamId,       // 数据流id---2
+        streamId: this.isnb ? arr : row.streamId,       // 数据流id---2
         warnType: row.warnType,        // 报警类型---2
         type: row.type,          // 触发类型---3
         threshold: row.threshold,      // 报警阈值---4
@@ -418,13 +506,13 @@ export default {
         this.notificationInfo('错误提示', '请填写描述')
         return
       }
-      let triNameReg = /^[0-9a-zA-Z_]{1,20}$/
-      if (!triNameReg.test(this.editAlarmForm.name)) {
+      // let triNameReg = /^[0-9a-zA-Z_]{1,20}$/
+      if (this.editAlarmForm.name === '') {
         this.notificationInfo('错误提示', '触发器名称只能包含数字、字母、下划线')
         return
       }
       this.param.name = this.editAlarmForm.name
-      this.param.streamId = this.editAlarmForm.streamId
+      this.param.streamId = Array.isArray(this.editAlarmForm.streamId) ? this.editAlarmForm.streamId[1] : this.editAlarmForm.streamId
       this.param.streamName = this.editAlarmForm.streamName
       this.param.warnType = this.editAlarmForm.warnType
       this.param.type = this.editAlarmForm.type
@@ -478,10 +566,10 @@ export default {
         }
         // 表单对象
         triggerEtyList[i] = {
-          mac: this.formArr[i].mac,            // 设备mac
+          mac: Array.isArray(this.formArr[i].streamId) ? this.formArr[i].streamId[0] : this.formArr[i].mac,            // 设备mac
           name: this.formArr[i].name,           // 触发器名称
           streamName: this.formArr[i].streamName,     // 监控点名称
-          streamId: this.formArr[i].streamId,       // 数据流id
+          streamId: Array.isArray(this.formArr[i].streamId) ? this.formArr[i].streamId[1] : this.formArr[i].streamId,       // 数据流id
           warnType: this.formArr[i].warnType,        // 报警类型
           type: this.formArr[i].type,          // 触发类型
           threshold: this.formArr[i].threshold,      // 报警阈值
@@ -515,6 +603,9 @@ export default {
         }
         return null
       })
+    },
+    monitoradd (value, index) {
+      
     },
     // 添加触发器监控点选择
     monitorChange: function (value, index) {
@@ -550,6 +641,7 @@ export default {
               // }
               // 根据配置修改类型（type）、数值（threshold）的可能
               // 修改类型（type）的可能
+              // debugger
               this.formArr[index].typeAllOption = this.monitorTypeOption[i].children[j].alarmType
               // type默认值
               this.formArr[index].type = this.formArr[index].typeAllOption[0].value
@@ -602,7 +694,49 @@ export default {
     **  API调用相关函数
     */
     // 查询后台的所有监控点信息（重新渲染组件时操作）
-
+    getnbwarnType () {
+      back.nbwarnType().then(res => {
+        if (res.errno !== 0) {
+          this.notificationInfo('错误提示', res.error)
+          reject()
+        } else {
+          res.data.map(item => {
+            item.warnType = item.warnType
+          })
+         
+          this.monitorTypeOption1 = res.data
+        }
+      })
+    },
+    getnbwarnType2 () {
+      let obj = {sn: sessionGetStore('groupid')}
+      back.relatioNbstreams(obj).then(res => {
+        if (res.errno !== 0) {
+          this.notificationInfo('错误提示', res.error)
+          reject()
+        } else {
+          res.data.map(item => {
+            item.streamId = item.mac
+          })
+          console.log(res.data)
+          this.monitorTypeOption2 = res.data
+        }
+      })
+    },
+    backDevInfoQuepy () {
+      back.relatioMonitorPoint(this.param).then(res => {
+          console.log(res)
+        if (res.errno !== 0) {
+          this.notificationInfo('错误提示', res.error)
+          reject()
+        } else {
+          res.data.map(item => {
+            item.streamId = item.mac
+          })
+          this.monitorTypeOption3 = res.data
+        }
+      })
+    },
     // 后台查询网关下设备监控点列表信息
     backDevInfoQue: function () {
       return new Promise(function (resolve, reject) {
@@ -628,6 +762,7 @@ export default {
                 type: response.data[i].type,
                 children: {}
               }
+              // debugger
               // 判断设备类型
               if (response.data[i].type === 1) {
                 // ispd
@@ -703,7 +838,7 @@ export default {
               obj.factor = deviceTrigger.triggerEtyList[j].type + deviceTrigger.triggerEtyList[j].threshold
               obj.content = deviceTrigger.triggerEtyList[j].content
               obj.triggerId = deviceTrigger.triggerEtyList[j].triggerId
-              
+              obj.mac = deviceTrigger.triggerEtyList[j].mac
               var triggerDataLength = triggerData.length
               triggerData[triggerData.length] = obj
               triggerData[triggerDataLength].number = triggerDataLength + 1
@@ -795,6 +930,9 @@ export default {
   padding: 0;
   overflow-x: hidden;
   height: 70%;
+}
+.alartable{
+  width: 99%;
 }
 .el-main{
   padding: 0;

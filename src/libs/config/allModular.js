@@ -200,26 +200,26 @@ var allModular = [
     // 使用的接口
     api: 'Onenet'
   },
-  // {
-  //   id: 20,
-  //   label: '功耗值走势',
-  //   value: 'powerWaste',
-  //   disabled: true,
-  //   echartsType: 'trend',
-  //   deviceType: '',
-  //   // 使用的接口
-  //   api: 'Onenet'
-  // },
-  // {
-  //   id: 21,
-  //   label: '接地电阻阻值走势',
-  //   value: 'electricResistance',
-  //   disabled: true,
-  //   echartsType: 'trend',
-  //   deviceType: '',
-  //   // 使用的接口
-  //   api: 'Onenet'
-  // },
+  {
+    id: 20,
+    label: '功耗值走势',
+    value: 'powerWaste',
+    // disabled: true,
+    echartsType: 'trend',
+    deviceType: 'cj485',
+    // 使用的接口
+    api: 'Onenet'
+  },
+  {
+    id: 21,
+    label: '接地电阻阻值走势',
+    value: 'electricResistance',
+    // disabled: true,
+    echartsType: 'trend',
+    deviceType: 'cj485',
+    // 使用的接口
+    api: 'Onenet'
+  },
   {
     id: 22,
     label: '雷击峰值走势',
@@ -257,6 +257,16 @@ var allModular = [
     disabled: false,
     echartsType: 'trend',
     deviceType: 'allCj485',
+    // 使用的接口
+    api: 'Common'
+  },
+  {
+    id: 26,
+    label: '接地电阻阻值超上限统计',
+    value: 'electricResistanceUpper',
+    // disabled: true,
+    echartsType: 'proportion',
+    deviceType: 'cj485',
     // 使用的接口
     api: 'Common'
   }

@@ -6,7 +6,7 @@
         <el-button type="primary" size="mini" class="btn_backSelf" icon="el-icon-circle-check-outline" @click="goPersonalBtn" v-if="backSelfBtn">回到自己</el-button>
       </div>
       <div class="deviceInfoBox">
-        <div class="item_info">当前网关：{{gatewayInfo.gatewayName}}</div>
+        <div class="item_info">当前选择：{{gatewayInfo.gatewayName}}</div>
         <div class="item_info">所属分组：{{gatewayInfo.groupName}}</div>
       </div>
     </div>
@@ -91,15 +91,26 @@ export default {
     this.param.sn = sessionGetStore('deviceSNNow')
     this.param.apiKey = sessionGetStore('apikeyNow')
     this.param.deviceId = sessionGetStore('deviceIdNow')
+    this.gatewayInfo.gatewayName =  sessionGetStore('gatewayName')
+    this.gatewayInfo.groupName =  sessionGetStore('groupName')
     if (sessionGetStore('userId') !== sessionGetStore('userIdMe')) {
       // 回到自己按钮的显示状态
       this.backSelfBtn = true
     }
   },
+  watch: {
+    $route (to) {
+      // console.log(to.path)
+      if (to.path === '/home/device/data/deviceNb') {
+        this.current = 0
+      }
+    }
+  },
   mounted () {
+   
     this.tabPaneSet()
     // 用户下网关列表信息获取
-    this.backDevInfoGet()
+    // this.backDevInfoGet()
   },
   methods: {
     // 回到自己按钮
@@ -117,7 +128,19 @@ export default {
     },
     // 点击顶部四个按键跳转
     goNewpage (index, path, e) {
-      Routers.push({ path: path })
+     
+      if (index === 0) {
+        let a = sessionGetStore('isnb')
+       
+        if (a === 'true') {
+          Routers.push({ path: '/home/device/data/deviceNb' })
+        } else {
+          Routers.push({ path: path })
+        }
+      } else {
+        Routers.push({ path: path })
+      }
+      
       // 修改当前的标题
       this.current = index
     },
@@ -154,7 +177,9 @@ export default {
       // console.log('用户下网关列表信息')
       // console.log(this.param)
       back.userDevQue(this.param).then(function (response) {
-        // console.log(response)
+        // debugger
+        console.log(response)
+        console.log(this.param.sn)
         // this.apiResponses = response // 为啥把response存起来，其他请求参数会用到该数据
         if (response.errno !== 0) {
           this.notificationInfo('错误提示', response.error)
@@ -163,14 +188,39 @@ export default {
         if (response.data && response.data.length > 0) {
           // 遍历分组
           for (let i = 0; i < response.data.length; i++) {
-            if (response.data[i].devices && response.data[i].devices.length > 0) {
+            if (response.data[i].children && response.data[i].children.length > 0) {
               // 遍历网关
-              for (let j = 0; j < response.data[i].devices.length; j++) {
-                if (response.data[i].devices[j].deviceId === this.param.deviceId) {
+              for (let j = 0; j < response.data[i].children.length; j++) {
+                if (response.data[i].children[j].sn === this.param.sn) {
                   // 网关信息
                   this.gatewayInfo = {
-                    gatewayName: response.data[i].devices[j].name, // 网关名称
-                    groupName: response.data[i].groupName // 分组名称
+                    gatewayName: response.data[i].children[j].label, // 网关名称
+                    groupName: response.data[i].label // 分组名称
+                  }
+                  return
+                }
+                if (response.data[i].children[j].children !==undefined) {
+                  for (let m = 0; m <  response.data[i].children[j].children.length; m++) {
+                    if (response.data[i].children[j].children[m].mac === this.param.sn) {
+                      // 网关信息
+                      this.gatewayInfo = {
+                        gatewayName: response.data[i].children[j].children[m].label, // 网关名称
+                        groupName: response.data[i].label // 分组名称
+                      }
+                      return
+                    }
+                    if (response.data[i].children[j].children[m].children !== undefined) {
+                      for (let n = 0; n <  response.data[i].children[j].children[m].children.length; n++) {
+                        if (response.data[i].children[j].children[m].children[n].mac === this.param.sn) {
+                          // 网关信息
+                          this.gatewayInfo = {
+                            gatewayName: response.data[i].children[j].children[m].children[n].label, // 网关名称
+                            groupName: response.data[i].label // 分组名称
+                          }
+                            return
+                        }
+                      }
+                    }
                   }
                 }
               }

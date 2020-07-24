@@ -19,10 +19,10 @@
         <div class="center_title">
           <div class="c_t_top">
             <div class="c_t_top_img">
-              <img src="/static/logo_globalPage.png" alt="">
+              <img :src="titlelogo" alt="">
             </div>
             <div class="c_t_top_text">
-              <p @click="goHomePage">防雷设备远程运维系统</p>
+              <p @click="goHomePage">{{indextitle}}</p>
             </div>
           </div>
           <div class="c_t_botm">
@@ -182,7 +182,7 @@
                 <div class="alarm_deviceName">{{alarmItem.dname}}</div>
                 <div class="alarm_alarmName">{{alarmItem.tname}}</div>
                 <div class="alarm_alarmContent">{{alarmItem.content}}</div>
-                <el-button type="primary" class="alarm_ck" size="mini" @click="ckAlarm(gatewayIndex, alarmIndex)">查看</el-button>
+                <el-button type="primary" class="alarm_ck" size="mini" @click="ckAlarm(gatewayIndex, alarmIndex)">解除</el-button>
               </div>
             </div>
           </div>
@@ -250,6 +250,8 @@ import modularAlarm from '@/libs/config/modularAlarm.js'
 export default {
   data () {
     return {
+      titlelogo: '',
+      indextitle: '',
       // 首页配置
       moduleList: [],
       // 空白配置
@@ -437,9 +439,10 @@ export default {
     }
   },
   computed: {
+
     // 左上角用户名渲染前computed
     userName () {                                       // computed的proterty不能与data定义的变量重名
-      var userName = sessionGetStore('nameMe')          // 前期测试通过浏览器缓存数据，后期只需浏览器存userId调用用户信息API
+      var userName = sessionGetStore('name')          // 前期测试通过浏览器缓存数据，后期只需浏览器存userId调用用户信息API
       this.$store.commit('setUserName', userName)
       return this.$store.state.userName
     },
@@ -470,6 +473,8 @@ export default {
     }
   },
   created () {
+    this.titlelogo = sessionGetStore('logo')
+    this.indextitle = sessionGetStore('sysName')
     this.param.userId = sessionGetStore('userId')
     this.param.Authorization = sessionGetStore('Authorization')
     this.param.auth = sessionGetStore('auth')
@@ -676,7 +681,8 @@ export default {
           deviceTypeRes.sort(function (a, b) {
             return a.type - b.type
           })
-          // console.log(deviceTypeRes)
+          console.log(deviceTypeRes)
+          // debugger
           for (var i = 0; i < deviceTypeRes.length; i++) {
             deviceTypeArr[i + 1] = deviceTypeRes[i].name
             deviceTypeObj[i + 1] = deviceTypeRes[i]
@@ -692,7 +698,6 @@ export default {
     // 获取用户统计模块初始设置
     getIndexSettings () {
       back.getIndexModule(this.param).then(function (response) {
-        
         if (response.errno !== 0) {
           this.notificationInfo('错误提示', response.error)
         } else {
@@ -790,6 +795,7 @@ export default {
         time: moduleSet.time
       }
       back.statisticsInfoCommon(paramObj).then(function (response) {
+       
         if (response.errno !== 0) {
           this.notificationInfo('错误提示', response.error)
         } else {
@@ -826,14 +832,23 @@ export default {
             } else if (moduleSet.contentType === 'deviceType') {
               // 设备类型统计
               let resData = response.data.deviceTypeCount
+             
               for (let i = 0; i < resData.length; i++) {
                 // 获取设备类型代表数字配置
                 let deviceTypeArr = JSON.parse(sessionGetStore('deviceTypeArr'))
                 // console.log(deviceTypeArr)
-                apiData[i] = {
-                  name: deviceTypeArr[resData[i].type],
-                  value: resData[i].number
+                if(resData[i].type ===3) {
+                  apiData[i] = {
+                    name: 'NB',
+                    value: resData[i].number
+                  }
+                } else {
+                  apiData[i] = {
+                    name: deviceTypeArr[resData[i].type],
+                    value: resData[i].number
+                  }
                 }
+                
               }
             } else if (moduleSet.contentType === 'alarmHandle') {
               // 报警处理情况统计
@@ -912,6 +927,7 @@ export default {
               if (resData) {
                 // 获取当前设备信息
                 back.deviceInfoQue(paramObj).then(function (res) {
+               
                   if (res.errno === 0) {
                     let streamsInfo = res.data.streamNameList.slice(-4)
                     // console.log(streamsInfo)
@@ -1016,12 +1032,14 @@ export default {
     },
     // onenet获取数据---获取模块数据接口2
     getEchartsDataOnenet (modularSetIndex, modularAllIndex, moduleSet) {
+   
       // console.log('onenet' + '---' + moduleSet.contentType)
       let paramObj = {
-        mac: moduleSet.device
+        mac: moduleSet.device,
+        contentType: moduleSet.contentType
       }
       // 获取当前设备信息
-      back.deviceInfoQue(paramObj).then(function (response) {
+      back.getonenet(paramObj).then(function (response) {
         // console.log(response)
         if (response.errno !== 0) {
           this.loadingFlag = false
@@ -1040,14 +1058,17 @@ export default {
           cursor: ''
         }
         // 遍历所有设备信息
-        for (let i = 0; i < this.device.length; i++) {
-          if (response.data.mac === this.device[i].mac) {
-            // 设置网关信息
-            onenetParamObj.apiKey = this.device[i].apiKey
-            onenetParamObj.deviceId = this.device[i].devId
-            break
-          }
-        }
+        // for (let i = 0; i < this.device.length; i++) {
+        //   if (response.data.mac === this.device[i].mac) {
+        //     // 设置网关信息
+        //     onenetParamObj.apiKey = this.device[i].apiKey
+        //     onenetParamObj.deviceId = this.device[i].devId
+        //     break
+        //   }
+        // }
+          onenetParamObj.apiKey = response.data.apiKey
+
+          onenetParamObj.deviceId = response.data.deviceId
         let streamIdIndex = ''
         // 根据不同设备类型，进行不同的处理
         if (response.data.type === 1) {
@@ -1069,7 +1090,7 @@ export default {
           }
         }
         // 数据流id
-        onenetParamObj.datastreamId[0] = response.data.streamNameList[streamIdIndex].streamId
+        // onenetParamObj.datastreamId[0] = response.data.streamNameList[streamIdIndex].streamId
         // 时间相关
         let nowDate = new Date()
         function getNowFormatDate (date) {
@@ -1095,24 +1116,48 @@ export default {
         // console.log(onenetParamObj)
         // 查询历史数据
         // console.log(onenet)
-        onenet.onenetHisTrendQueStart(onenetParamObj).then(function (response) {
+        var obj = response.data
+        obj.startTime = oldTime
+        obj.endTime = nowTime
+        // obj.limit = 6000
+        onenetParamObj.datastreamId = response.data.streamIds.toString()
+        onenet.onenetStartOneHisQue(onenetParamObj).then(function (response) {
+  
           if (response.errno !== 0) {
             this.notificationInfo('错误提示', response.error)
             this.loadingFlag = false
           }
           // console.log(response.data)
-          if (response.data && response.data.datastreams) {
+          if (response.data) {
             // 接口数据
             let apiData = []
-            let resData = response.data.datastreams[0].datapoints
             let nameArr = []
             let timeValueArr = []
-            for (let i = 0; i < resData.length; i++) {
-              let timeAt = resData[i].at.substring(0, resData[i].at.length - 4)
-              // console.log(timeAt)
-              nameArr.push(timeAt)
-              timeValueArr.push(resData[i].value)
+            if (response.data.datastreams.length === 1) {
+              let resData = response.data.datastreams[0].datapoints
+              for (let i = 0; i < resData.length; i++) {
+                let timeAt = resData[i].at.substring(0, resData[i].at.length - 4)
+                // console.log(timeAt)
+                nameArr.push(timeAt)
+                timeValueArr.push(resData[i].value)
+              }
+            } else {
+              let resData = response.data.datastreams
+              for (let i = 0; i < resData[0].datapoints.length; i++) {
+                for (let j= 0; j < resData[1].datapoints.length; j++) {
+                  if ( resData[0].datapoints[i].at === resData[1].datapoints[j].at) {
+                    let timeAt = resData[0].datapoints[i].at.substring(0, resData[0].datapoints[i].at.length - 4)
+                    nameArr.push(timeAt)
+                    timeValueArr.push(resData[0].datapoints[i].value * resData[1].datapoints[j].value)
+                  }
+                }
+                // console.log(timeAt)
+              }
             }
+            // response.data.map(item=>{
+            //   timeValueArr.push(item.current_value)
+            //   nameArr.push(item.update_at)
+            // })
             apiData = {
               name: nameArr,
               value: {
@@ -1615,6 +1660,7 @@ export default {
     // 获取账号下全部设备信息
     getAllDeviceInfo () {
       back.allDeviceInfo(this.param).then(function (response) {
+       
         // console.log(response)
         let k = 0
         if (response.data) {
@@ -1631,6 +1677,7 @@ export default {
             obj.mac = response.data[i].mac
             obj.address = ''
             obj.points = []
+            obj.type = response.data[i].type
             if (response.data[i].isWarn === 1) {
               // 存在报警
               obj.online = 2
@@ -1714,9 +1761,9 @@ export default {
       var cr = new BMap.CopyrightControl({anchor: BMAP_ANCHOR_BOTTOM_RIGHT})
       this.map.addControl(cr)
       var bs = this.map.getBounds()
-      cr.addCopyright({id: 1, content: '<img src="/static/logo.png" height=30px/>', bounds: bs})
+      cr.addCopyright({id: 1, content: `<img src= ${this.titlelogo} height=30px/>`, bounds: bs})
     },
-    // stomp协议数据长连接
+    // stomp协议数据长连接 
     stompLink: function () {
       this.stompClient = Stomp.client('ws://114.55.67.62:15674/ws') // 测试
       // this.stompClient = Stomp.client('ws://116.62.155.56:15674/ws') // 雷泰
@@ -1954,6 +2001,7 @@ export default {
     // 添加标注点和信息面板，根据设备在线状况添加不同的标注点
     addmarkerandInfo: function () {
       this.map.clearOverlays()
+      
       console.log(this.overlapgroup)
       // 简化添加标注点和标签
       for (let i = 0; i < this.overlapgroup.length; i++) {
@@ -2026,13 +2074,22 @@ export default {
                   sessionSetStore('deviceSNNow', deviceObj.sn)
                   sessionSetStore('apikeyNow', deviceObj.apiKey)
                   sessionSetStore('deviceIdNow', deviceObj.devId)
-                  if (deviceObj.online === 2) {
-                    // 报警---前往报警统计页
-                    Routers.push({ path: '/home/device/alarm/alarmStatistics' })
-                  } else {
+                  sessionSetStore('gatewayName', deviceObj.title)
+                  sessionSetStore('nbmac', deviceObj.mac)
+                  // if (deviceObj.online === 2) {
+                  //   // 报警---前往报警统计页
+                  //   Routers.push({ path: '/home/device/data/watchone' })
+                  // } else {
                     // 在线或者离线---前往设备管理页
-                    Routers.push({ path: '/home/device/set/deviceManage' })
+                  if (deviceObj.type==3 ) {
+                    this.$bus.$emit('isnb', true)
+                    sessionSetStore('isnb', true)
+                    Routers.push({ path: `/home/device/data/deviceNb` , query: { id: deviceObj.mac } })
+                  } else {
+                    sessionSetStore('isnb', false)
+                  Routers.push({ path: '/home/device/data/watchone' })
                   }
+                  // }
                 }
               }
             })
@@ -2076,6 +2133,7 @@ export default {
                 */
                 methods: {
                   todevice: function (deviceObj) {
+                    // debugger
                     deviceObj = deviceObj.replace(/&#34/g, '"')
                     deviceObj = JSON.parse(deviceObj)
                     console.log(deviceObj)
@@ -2084,7 +2142,7 @@ export default {
                     sessionSetStore('deviceIdNow', deviceObj.devId)
                     if (deviceObj.online === 2) {
                       // 报警---前往报警统计页
-                      Routers.push({ path: '/home/device/alarm/alarmStatistics' })
+                      Routers.push({ path: '/home/device/data/watchone' })
                     } else {
                       // 在线或者离线---前往设备管理页
                       Routers.push({ path: '/home/device/set/deviceManage' })

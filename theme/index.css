@@ -38364,10 +38364,10 @@
     border-radius: 6px;
     -webkit-box-sizing: border-box;
     box-sizing: border-box;
-    width: 148px;
-    height: 148px;
+    width: 100px;
+    height: 100px;
     cursor: pointer;
-    line-height: 146px;
+    line-height: 105px;
     vertical-align: top; }
     .el-upload--picture-card i {
       font-size: 28px;
@@ -38532,8 +38532,8 @@
       border-radius: 6px;
       -webkit-box-sizing: border-box;
       box-sizing: border-box;
-      width: 148px;
-      height: 148px;
+      width: 100px;
+      height: 100px;
       margin: 0 8px 8px 0;
       display: inline-block; }
       .el-upload-list--picture-card .el-upload-list__item .el-icon-check,

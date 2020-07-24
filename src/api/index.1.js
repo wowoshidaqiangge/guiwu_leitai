@@ -868,21 +868,7 @@ export const back = {
       .catch((error) => {
         console.log(error)
       })
-  },
-  // *********
-  // 获取oss签名数据
-  ossInfo () {
-    return axios({
-      url: `http://picture.thingcom.com/web/token`,
-      method: 'get',
-      headers: {},
-      data: {}
-    })
-      .then((response) => {
-        return response.data
-      })
-      .catch((error) => {
-        console.log(error)
-      })
   }
+  // *********
+
 }

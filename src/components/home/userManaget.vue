@@ -47,12 +47,14 @@
           header-align="center"
           min-width="30%">
           <template slot-scope="scope">
+            <el-button type="text" size="small" icon="el-icon-edit-outline" @click="hanld(scope.$index, scope.row)" v-show="authnum==='0' ">修改</el-button>
             <el-button type="text" size="small" icon="el-icon-edit" @click="handleEdit(scope.$index, scope.row)" v-show="editBtnShow">编辑</el-button>
             <el-button type="text" size="small" icon="el-icon-info" @click="handleRead(scope.$index, scope.row)">查看</el-button>
             <el-button type="text" size="small" icon="el-icon-delete" @click="handleDelete(scope.$index, scope.row)" v-show="delBtnShow">删除</el-button>
           </template>
         </el-table-column>
         </el-table>
+              
       </el-main>
       <!-- 对话框部分 -->
       <el-dialog :title="diaTitle" :visible.sync="diaShow" @closed="diaClose" width="300px" center>
@@ -86,6 +88,44 @@
             <div class="footerBtn">
               <el-button type="primary" @click="diaConfirmBtn('userForm')">确定</el-button>
               <el-button class="btn_cancel_dialog" @click="diaShow = false">取消</el-button>
+            </div>
+          </el-form-item>
+        </el-form>
+      </el-dialog>
+
+      <el-dialog :title="diaTitle" :visible.sync="editShow" @closed="editClose" width="500px" center>
+        <el-form ref="userForm1" :model="userForm1" :rules="rulesLogin">
+          <el-form-item label="自定义名称" prop="sysName">
+            <el-input  v-model="userForm1.sysName" placeholder="请输入"></el-input>
+          </el-form-item>
+          <el-form-item label="LOGO图标" >
+            
+          </el-form-item>
+              <el-upload
+                class="ip_halfLine"
+                :action="host"
+                :accept="type"
+                ref='my-upload'
+                :show-file-list="fileListShow"
+                :file-list="pictureList"
+                list-type="picture-card"
+                :limit="pictureNum"
+                :data="ossParams"
+                :before-upload="beforeUpload"
+                :on-success="handleSuccess"
+                :on-preview="handlePictureCardPreview"
+                :on-remove="handleRemove"
+                :on-exceed="onExceed">
+                <i class="el-icon-plus"></i>
+              </el-upload>
+              <el-dialog :visible.sync="dialogVisible">
+                <img width="100%" :src="dialogImageUrl" alt="">
+              </el-dialog>
+              
+          <el-form-item>
+            <div class="footerBtn">
+              <el-button type="primary" @click="editConfirmBtn('userForm1')">确定</el-button>
+              <el-button class="btn_cancel_dialog" @click="editShow = false">取消</el-button>
             </div>
           </el-form-item>
         </el-form>
@@ -143,6 +183,27 @@ export default {
       }
     }
     return {
+      query: {},
+      editShow: false,
+      authnum: '',
+      host: 'http://thingcom-dianliuji.oss-cn-hangzhou.aliyuncs.com', // 上传地址：此处也是创建oss的外网地址
+      type: 'image/*',                         // 接受上传的文件类型   
+      fileListShow: true,                      // 是否显示已上传照片列表
+      pictureNum: 1, // 最大允许上传个数
+      // 从服务端获取到的签名数据
+      ossParams: {
+        OSSAccessKeyId: '',
+        policy: '',
+        signature: '',
+        expire: '',
+        key: '',                      // key后面有用，先默认设空字符串
+        success_action_status: '200'  // 默认200
+      },
+      // 已上传文件列表
+      pictureList: [],
+      dialogImageUrl: '', // 放大的图片url
+      dialogVisible: false, // 放大图片所在的对话框 
+      tableHeight: document.body.clientHeight - 75 - 70 - 58 - 30 - 20,
       // 参数，用于API请求
       param: {
         userId: '123',
@@ -170,6 +231,9 @@ export default {
         auth: ''
         // groupId: ''
       },
+      userForm1: {
+        sysName: ''
+      },
       // 存储权限选择框
       authOptions: [{
         authValue: '1',
@@ -186,6 +250,10 @@ export default {
         name: [
           { required: true, validator: checkName, trigger: 'blur' }
         ],
+        sysName: [
+          {required: true, message: '请输入名称'}
+        ],
+       
         account: [
           { required: true, validator: checkAccount, trigger: 'blur' }
         ],
@@ -211,6 +279,7 @@ export default {
   },
   created () {
     // 如果刷新页面，则重新获取用户下挂信息 userId
+    this.authnum = sessionGetStore('auth')
     this.param.userId = sessionGetStore('userId')
     // 分组管理/设备添加/用户管理 按钮显示判断
     let auth = sessionGetStore('authMe')
@@ -238,9 +307,128 @@ export default {
   },
   mounted () {
     // back用户信息列表获取
-    this.backUserInfoListQue()
+    this.backUserInfoListQue() 
   },
   methods: {
+
+    editConfirmBtn (form) {
+      var that = this
+      this.$refs[form].validate((valid) => {
+        if (valid) {
+          if (this.imageUrl || this.pictureList.length>0) {
+            this.query.logo = this.imageUrl
+            this.query.sysName = this.userForm1.sysName
+            back.userUi(this.query).then(function (response) {
+              if (response === undefined) {
+                that.notificationInfo('错误提示', response.error, 'error')
+              } else {
+                that.query = {}
+                that.editShow = false
+                that.clearFiles()
+                that.backUserInfoListQue()
+                that.notificationInfo('提示', '修改成功', 'success')
+                console.log(response)
+              }
+            })
+          } else {
+            this.notificationInfo('错误提示', 'logo不能为空', 'error')
+          }
+        } else {
+          return false
+        }
+      })
+    },
+    editClose () {
+      this.$refs.userForm1.resetFields()
+      this.clearFiles()
+    },
+    hanld (index, info) {
+      var logourl = info.logo
+      this.userForm1.sysName = info.sysName
+      this.diaTitle = '修改名称及LOGO'
+      this.pictureList = []
+      this.pictureList.push({url: logourl})
+      this.editShow = true
+      this.query.userId = info.userId
+    },
+    // 上传之前的回调
+    beforeUpload: async function (file) {
+      console.log('上传之前的回调')
+    
+      console.log(this.pictureList)
+      await this.backOssInfo(file)
+    },
+    // 上传成功的回调
+    handleSuccess (res, file) {
+      console.log('上传成功的回调')
+      console.log(this.pictureList)
+      this.imageUrl = this.host + '/' + this.ossParams.key
+      // 用电方表单信息---更新
+      // this.diaForm.companyInform = this.imageUrl
+      console.log(this.imageUrl)
+    },
+    clearFiles () {
+      this.$refs['my-upload'].clearFiles()
+    },
+    // 文件列表移除文件时的钩子
+    handleRemove: function (file, fileList) {
+     
+      console.log('移除的回调')
+      console.log(this.pictureList)
+      console.log(file)                 // 移除文件
+      console.log(fileList)             // 剩余文件
+      // 供电方表单信息---更新
+      
+      this.pictureList = []
+      this.imageUrl = ''
+      // this.diaForm.imageUrl = ''
+    },
+    // 点击文件列表中已上传的文件时的钩子
+    handlePictureCardPreview (file) {
+      console.log('点击文件列表中已上传的文件时回调')
+      console.log(this.pictureList)
+      this.dialogImageUrl = file.url
+      this.dialogVisible = true
+    },
+    // 文件超出个数限制时的钩子
+    onExceed (files, fileList) {
+      console.log(files)
+      console.log(fileList)
+      this.notificationInfo('错误提示', '最多只允许上传一张图片', 'warning')
+    },
+    // 获取oss签名数据
+    backOssInfo: function (file) {
+      return new Promise(function (resolve, reject) {
+        back.ossInfo().then(function (response) {
+          console.log(response)
+          if (response === undefined) {
+            this.notificationInfo('错误提示', response.error, 'error')
+            reject()
+          } else {
+            console.log(response)
+            this.ossParams.OSSAccessKeyId = response.accessid
+            this.ossParams.policy = response.policy
+            this.ossParams.signature = response.signature
+            this.ossParams.key = sessionGetStore('userId') + this.randomWord(true, 9, 12)
+            resolve()
+          }
+        }.bind(this))
+      }.bind(this))
+    },
+    randomWord (randomFlag, min, max) {
+      let str = ''
+      let range = min
+      let arr = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
+      // 随机产生
+      if (randomFlag) {
+        range = Math.round(Math.random() * (max - min)) + min
+      }
+      for (let i = 0; i < range; i++) {
+        let pos = Math.round(Math.random() * (arr.length - 1))
+        str += arr[pos]
+      }
+      return str
+    },
     // 关闭对话框自动调用事件
     diaClose: function () {
       // 关闭表单验证
@@ -287,6 +475,8 @@ export default {
       console.log('查看按钮')
       console.log(index)
       console.log(row)
+      sessionSetStore('logo', row.logo)
+      sessionSetStore('sysName', row.sysName)
       sessionSetStore('name', row.name)
       sessionSetStore('userId', row.userId)
       let auth
@@ -369,6 +559,8 @@ export default {
       sessionSetStore('name', sessionGetStore('nameMe'))
       sessionSetStore('userId', sessionGetStore('userIdMe'))
       sessionSetStore('auth', sessionGetStore('authMe'))
+      sessionSetStore('logo', sessionGetStore('logoMe'))
+      sessionSetStore('sysName', sessionGetStore('sysNameMe'))
       sessionSetStore('deviceIdNow', '')
       // 全局网关列表刷新标志位置true，需要刷新
       this.$store.commit('setdeviceGroupRefresh', true)
@@ -407,6 +599,8 @@ export default {
             obj.mobile = response.data[i].mobile
             obj.company = response.data[i].company
             obj.account = response.data[i].account
+            obj.logo = response.data[i].logo
+            obj.sysName = response.data[i].sysName
             // back返给的auth 0,1,2,3 => 对应中文名称
             let auth
             if (response.data[i].auth === 0) auth = '超级管理员'
@@ -415,6 +609,10 @@ export default {
             if (response.data[i].auth === 3) auth = '普通用户'
             obj.auth = auth
             list[i] = obj
+            if (this.param.userId===response.data[i].userId) {
+              sessionSetStore('sysName', response.data[i].sysName)
+              sessionSetStore('logo', response.data[i].logo)
+            }
           }
           this.userTableData = list
         }
@@ -466,6 +664,9 @@ export default {
 <style scoped>
 .groupSet{
   padding: 0 35px;
+}
+.ip_halfLine{
+  margin-bottom: 20px;
 }
 .el-container {
   display: flex;

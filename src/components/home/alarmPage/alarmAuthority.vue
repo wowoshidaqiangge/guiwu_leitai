@@ -1,6 +1,7 @@
 <template>
   <el-container>
     <div class="alarmauthority">
+     
       <el-main class="alarmauthoritymain">
         <el-table
           v-loading="loadingFlag"
@@ -83,10 +84,13 @@ export default {
   data () {
     // 手机号验证    注意是写在return外面的函数
     var validatePhone = (rule, value, callback) => {
+      var TEL_REGEXP = /^1([38][0-9]|4[579]|5[0-3,5-9]|6[6]|7[0135678]|9[89])\d{8}$/
       if (value === '') {
         callback(new Error('手机号不能为空'))
       } else if (value.length !== 11) {
         callback(new Error('请输入11位手机号'))
+      } else if (!TEL_REGEXP.test(value)) {
+        callback(new Error('手机号格式有误'))
       } else {
         callback()
       }

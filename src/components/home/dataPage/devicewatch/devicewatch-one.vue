@@ -5,7 +5,7 @@
     <div class="main">
       <!-- 选择设备区域 -->
       <div class="select_device">
-        <span>设备类型选择：</span>
+        <!-- <span>设备类型选择：</span>
         <el-select
           v-model="deviceTypeSelected"
           size="small"
@@ -18,33 +18,54 @@
             :label="item.name"
             :value="item.type"
           ></el-option>
-        </el-select>
+        </el-select> -->
         <el-button
           type="primary"
+          
           style="margin-left:20px;"
           size="small"
           @click="mointorPointQueBt()"
-        >监控查询</el-button>
+        >刷新</el-button>
       </div>
       <!-- 表格信息区域 -->
-      <el-row class="deviceTableDiv" v-if="moniterDataShow">
+      <!-- <el-row class="deviceTableDiv" v-if="moniterDataShow"> -->
+        <el-row class="deviceTableDiv" v-loading="loading">
         <!-- 设备下的监控点信息表格 -->
         <el-table
           :data="sensorListData"
           :max-height="max_table_height"
+          row-key="mac"
           size="medium"
           border
           class="deviceTable"
           :row-class-name="tableRowClassName"
         >
-          <el-table-column prop="name" width="200" label="设备名称" header-align="center"></el-table-column>
+          <el-table-column prop="belong" width="120" label="所属点" header-align="center"></el-table-column>
+          <el-table-column prop="type" width="100" label="设备类型" header-align="center"></el-table-column>
+          <el-table-column prop="name" width="100" label="设备名称" header-align="center"></el-table-column>
           <el-table-column v-for="(item, index) in tableCol" :key="index" :label='"传感器"+item' header-align="center">
             <template slot-scope="scope">
-              <div v-if="scope.row['jkd' + index].auth===1">
+              <!-- <div v-if="scope.row['jkd' + index] !== undefined  && scope.row['jkd' + index].auth===1">
                 <div class="tbcell_left">{{scope.row['jkd' + index].name}}</div>：
-                <div class="tbcell_right">{{scope.row['jkd' + index].value}}</div>
+                <div class="tbcell_right tbcell_right1" v-if='scope.row.streams[index].isWarnSet===1&& scope.row.streams[index].dataType===1'>{{scope.row['jkd' + index].value}}</div>
+                <div v-if="scope.row.streams[index].coefficient !== undefined ">
+                  <div class="tbcell_right tbcell_right2" v-if='scope.row.streams[index].dataType===0&&scope.row.streams[index].isWarnSet===0'>{{scope.row['jkd' + index].value *scope.row.streams[index].coefficient }}</div>
+                  <div class="tbcell_right" v-if='scope.row.streams[index].dataType===1&&scope.row.streams[index].isWarnSet===0'>{{scope.row['jkd' + index].value * scope.row.streams[index].coefficient}}</div>
+                </div>
+                <div v-else>
+                  <div class="tbcell_right tbcell_right2" v-if='scope.row.streams[index].dataType===0&&scope.row.streams[index].isWarnSet===0'>{{scope.row['jkd' + index].value}}</div>
+                  <div class="tbcell_right" v-if='scope.row.streams[index].dataType===1&&scope.row.streams[index].isWarnSet===0'>{{scope.row['jkd' + index].value}}</div>
+                </div>
               </div>
-              <div v-else>-</div>
+              <div v-else> -</div> -->
+              
+              <div v-if="scope.row['jkd' + index] !== undefined  && scope.row['jkd' + index].auth===1">
+                <div class="tbcell_left">{{scope.row['jkd' + index].name}}</div>：
+                <div class="tbcell_right tbcell_right1" v-if='scope.row.streams[index].isWarnSet===1'>{{scope.row[`jkd${index}`].value}}</div>
+                <div class="tbcell_right tbcell_right2" v-else-if='scope.row.streams[index].dataType===0 && scope.row[`jkd${index}`].value === 1'>{{scope.row[`jkd${index}`].value}}</div>
+                <div class="tbcell_right" v-else>{{scope.row['jkd' + index].value}}</div>
+              </div>
+              <div v-else> -</div>
             </template>
           </el-table-column>
         </el-table>
@@ -53,6 +74,7 @@
   </el-container>
 </template>
 <script>
+import Sortable from 'sortablejs'
 import { back, onenet } from 'api'
 import { sessionGetStore } from '@/components/config/Utils'
 export default {
@@ -70,6 +92,7 @@ export default {
         // 数据流id数组
         datastreamId: []
       },
+      loading: false,
       max_table_height: null, // 表格高度
       typeSelectedIndex: 0, // 当前选择的设备类型的索引
       typeSearchIndex: 0, // 当前搜索的设备类型的索引
@@ -135,6 +158,7 @@ export default {
     await this.backDevInfoQue()
     // onenet查询当前网关是否在线，若离线则不查询监控点数据
     this.queryDevStateOnenet()
+    this.rowDrop()
   },
   beforeDestroy () {
     // 停止定时器
@@ -145,6 +169,42 @@ export default {
     /*
     //  ************  用户操作触发方法  ************
     */
+    //行拖拽
+    rowDrop() {
+      if (sessionGetStore('onenb') === 'true') {
+        console.log(sessionGetStore('onenb'))
+        return
+      }
+      const el = document.querySelector('.deviceTable .el-table__body-wrapper > table > tbody')
+      const _this = this
+      this.sortable = Sortable.create(el, {
+        ghostClass: "sortable-ghost",
+        // handle: ".drag-item", // 指定推拽列
+        setData: function (dataTransfer) {
+          dataTransfer.setData("Text", "")
+        },
+        onEnd: evt => {
+          this.$nextTick(() => {
+            console.log(evt)
+            console.log(evt.newIndex)
+          	// 实现推拽的代码，先在原数组中删除当前推拽的对象，然后在将它添加到对应的位置
+          	// targetObj当前推拽的对象，evt.oldIndex推拽对象原来的下标，evt.newIndex推拽对象要推拽到的下标
+            let targetObj = this.sensorListData.splice(evt.oldIndex, 1)[0]
+            _this.sensorListData.splice(evt.newIndex, 0, targetObj)
+            let paramObj = {}
+            paramObj.mac = targetObj.mac
+            paramObj.isNb = 0
+            if (_this.sensorListData[evt.newIndex-1]) {
+              paramObj.prev = _this.sensorListData[evt.newIndex-1].pos
+            }
+            if (_this.sensorListData[evt.newIndex+1]) {
+              paramObj.next = _this.sensorListData[evt.newIndex+1].pos
+            }
+            _this.gototableSort(paramObj)
+          })
+        }
+      })
+    },
     // 选择设备发生变化
     deviceTypeChange (value) {
       // 清除轮询查询
@@ -153,43 +213,44 @@ export default {
     // 按键事件方法，监控信息查询
     mointorPointQueBt (item) {
       // 表格显示状态---隐藏
-      this.moniterDataShow = false
-      // 清空参数
-      this.param.datastreamId = []
-      // console.log('监控查询')
-      // 后台查询该设备下监控点数据流信息
-      // this.typeSelectedIndex = this.deviceTypeSelected - 1 // 选中设备类型的序号
-      // 设置数据流参数，以及数据流个数
-      this.typeSearchIndex = this.typeSelectedIndex
-      this.param.datastreamId = this.deviceTypeDatastreamId[this.typeSearchIndex]
-      // console.log(this.deviceTypeDatastreamId)
-      console.log(this.typeSearchIndex)
-      // console.log(this.param.datastreamId)
+      // this.moniterDataShow = false
+      // // 清空参数
+      // this.param.datastreamId = []
+      // // console.log('监控查询')
+      // // 后台查询该设备下监控点数据流信息
+      // // this.typeSelectedIndex = this.deviceTypeSelected - 1 // 选中设备类型的序号
+      // // 设置数据流参数，以及数据流个数
+      // this.typeSearchIndex = this.typeSelectedIndex
+      // this.param.datastreamId = this.deviceTypeDatastreamId[this.typeSearchIndex]
+      // // console.log(this.deviceTypeDatastreamId)
+      // console.log(this.typeSearchIndex)
+      // // console.log(this.param.datastreamId)
       
-      // 监控点个数
-      var colNum = this.deviceTypeStreamLength[this.typeSearchIndex]
-      // console.log(this.deviceTypeStreamLength)
-      // console.log(colNum)
-      // 表格的列
-      var tableColArr = []
-      for (var x = 0; x < colNum; x++) {
-        tableColArr[x] = x + 1
-      }
-      // 表格的列---更新
-      this.tableCol = tableColArr
-      if (this.param.datastreamId.length !== 0) {
+      // // 监控点个数
+      // var colNum = this.deviceTypeStreamLength[this.typeSearchIndex]
+      // // console.log(this.deviceTypeStreamLength)
+      // // console.log(colNum)
+      // // 表格的列
+      // var tableColArr = []
+      // for (var x = 0; x < colNum; x++) {
+      //   tableColArr[x] = x + 1
+      // }
+      // // 表格的列---更新
+      // this.tableCol = tableColArr
+      // if (this.param.datastreamId.length !== 0) {
         
-      } else {
-        this.notificationInfo('提示：', '没有相关类型设备数据')
-        return
-      }
+      // } else {
+      //   this.notificationInfo('提示：', '没有相关类型设备数据')
+      //   // return
+      // }
 
       // 监控查询函数---初始查询
       this.monitorQueryFunc()
+      this.notificationInfo('提示', '刷新成功')
       // 清除轮询查询
-      clearInterval(this.lxctimer)
+      // clearInterval(this.lxctimer)
       // 轮询查询
-      this.lxctimer = setInterval(this.monitorQueryFunc.bind(this), 5000)
+      // this.lxctimer = setInterval(this.monitorQueryFunc.bind(this), 5000)
     },
     // 监控查询函数
     monitorQueryFunc () {
@@ -199,20 +260,31 @@ export default {
     tableRowClassName ({row, rowIndex}) {
       // console.log(row)
       let className = ''
-      if (row.online === 0) {
+      if (row.isOnline === 0) {
         // 不在线
-        className += 'offlineClass '
+        className += 'offlineClass'
       }
-      if (row.isWarn === 1) {
-        // 含有报警
-        className += 'alarmClass '
-      }
+      // if (row.isWarn === 1) {
+      //   // 含有报警
+      //   className += 'alarmClass '
+      // }
       return className
     },
     /*
     //  ************  API调用相关函数  ************
     */
     // ***************   back   **************
+    // 拖拽换行
+    gototableSort: function (paramObj) {
+      // console.log('查询设备的状态:1在线0离线')
+      // console.log(this.param)
+      back.gotableSort(paramObj).then(
+        function (response) {
+          console.log(response)
+          this.backDevInfoQue()
+        }.bind(this)
+      )
+    },
     // 后台查询网关下监控点列表信息
     backDevInfoQue: function () {
       return new Promise(
@@ -229,6 +301,7 @@ export default {
                 dtArr3[i] = []
               }
               // 不同设备类型下的设备
+              let arr = []
               let typeDeviceList = dtArr1
               // 不同设备类型下的设备数据流Id
               let deviceTypeDatastreamId = dtArr3
@@ -251,17 +324,38 @@ export default {
                   // 遍历监控点
                   for (let j = 0; j < response.data[i].streams.length; j++) {
                     // 不同类型的设备
+                    arr.push(response.data[i].streams[j].streamId)
                     deviceTypeDatastreamId[obj.type - 1][deviceTypeDatastreamId[obj.type - 1].length] = response.data[i].streams[j].streamId
                   }
                   // 不同类型的设备
                   typeDeviceList[obj.type - 1][typeDeviceList[obj.type - 1].length] = obj
                 }
+               
                 resolve()
               }
+              
               // this.deviceList = deviceList
-              this.typeDeviceList = typeDeviceList
+              this.typeDeviceList = response.data
+              // this.sensorListData = response.data
+              // 监控点个数
+              var colNum = this.deviceTypeStreamLength[this.typeSearchIndex]
+              // console.log(this.deviceTypeStreamLength)
+              // console.log(colNum)
+              // 表格的列
+              var tableColArr = []
+              for (var x = 0; x < colNum; x++) {
+                tableColArr[x] = x + 1
+              }
+              // 表格的列---更新
+            
+              this.tableCol = tableColArr
               // this.deviceTypeDatastream = deviceTypeDatastream
-              this.deviceTypeDatastreamId = deviceTypeDatastreamId
+              // this.deviceTypeDatastreamId = deviceTypeDatastreamId
+              this.param.datastreamId = arr
+              this.monitorQueryFunc()
+              clearInterval(this.lxctimer)
+              // 轮询查询
+              this.lxctimer = setInterval(this.monitorQueryFunc.bind(this), 5000)
             }.bind(this))
             .catch(function (error) {
               console.log(error)
@@ -290,8 +384,10 @@ export default {
     // 查询onenet上的最新监控点数据（只返回有数据的监控点的信息）
     querydataOnenet: function (deviceIndex, monitorPointName) {
       // 实际数据
+      // this.loading = true
       onenet.onenetLimitHisQue(this.param).then(
         function (response) {
+          // this.loading = false
           // 回调函数为空，重复发送一次
           if (response.errno === undefined) {
             // 查询onenet上的最新监控点数据
@@ -310,13 +406,17 @@ export default {
             return
           }
           // 目标类型的设备列表
-          var targetDevieType = this.typeDeviceList[this.typeSearchIndex]
-          // console.log(targetDevieType)
+          var targetDevieType = this.typeDeviceList
           let arr = []
-          
+          console.log(targetDevieType)
           // 遍历目标类型的设备列表
           for (var j = 0; j < targetDevieType.length; j++) {
             let obj = targetDevieType[j]
+            if (obj.type === 1 || obj.type === 'ISPD') {
+              obj.type = 'ISPD' 
+            } else {
+              obj.type = 'CJ485'
+            }
             // 遍历目标类型的设备列表中每个设备的监控点信息
             for (var k = 0; k < obj.streams.length; k++) {
               // 遍历实时数据
@@ -328,9 +428,11 @@ export default {
                     auth: obj.streams[k].auth // 监控点是否显示
                     // value: response.data[i].current_value !== undefined ? response.data[i].current_value : '空'  // 监控点数值
                   }
+                  // console.log(response.data[i].current_value, obj.streams[k].streamId, obj.streams[k])
                   if (response.data[i].current_value !== undefined) {
+                   
                     // 判断当前搜索的设备类型的索引
-                    if (this.typeSearchIndex === 1) {
+                    // if (this.typeSearchIndex === 1) {
                       // 是cj485
                       // 判断是不是
                       if (i % 9 === 6 || i % 9 === 8) {
@@ -346,10 +448,9 @@ export default {
                         // 不是 接地电阻阻值或者雷击峰值
                         obj['jkd' + k].value = response.data[i].current_value  // 监控点数值
                       }
-                    } else {
-                      // 不是cj485
-                      obj['jkd' + k].value = response.data[i].current_value  // 监控点数值
-                    }
+                      if (obj.streams[k].coefficient !== undefined) {
+                        obj['jkd' + k].value = obj.streams[k].coefficient *  obj['jkd' + k].value 
+                      }
                   } else {
                     obj['jkd' + k].value = '空'  // 监控点数值
                   }
@@ -360,9 +461,9 @@ export default {
           }
           
           this.sensorListData = arr
+          console.log(this.sensorListData)
           // 表格显示状态---显示
           this.moniterDataShow = true
-          // console.log(this.sensorListData)
         }.bind(this)
       )
     },
@@ -378,6 +479,7 @@ export default {
         message: h('i', { style: 'color: teal' }, `${messagePara}`)
       })
     }
+   
   }
 }
 </script>
@@ -440,6 +542,14 @@ export default {
   }
   .tbcell_right {
     display: inline-block;
+ 
+  }
+  .tbcell_right1 {
+   
+    color:red
+  }
+  .tbcell_right2{
+    color:rgb(34, 177, 70)
   }
 }
 
@@ -448,7 +558,7 @@ export default {
     background-color: #999;
     td {
       div {
-        color: #444;
+        color: #444!important;
       }
     }
   }

@@ -1,13 +1,31 @@
 <template>
   <div class="alarmhistory">
     <div class="top_search">
-      <el-button class="exportBtn" type="primary" size="small" v-if="exportBtnShow" @click="exportFunc">导出</el-button>
+      <div class="jkd_chose_box">
+        <span>设备选择：</span>
+       
+        <el-autocomplete
+          popper-class="my-autocomplete"
+          v-model="deviceSelected"
+          size="mini"
+          :fetch-suggestions="querySearch"
+          placeholder="请输入内容"
+          :clearable="true"
+          @clear="clearall"
+          @select="handleSelect">
+         
+          <template slot-scope="{ item }">
+            <div class="name">{{ item.name }}</div>
+          
+          </template>
+        </el-autocomplete>
+      </div>
       <el-date-picker
         v-model="time"
         value-format="yyyy-MM-dd HH:mm:ss"
         type="datetimerange"
         class="time_select_div"
-        size="small"
+        size="mini"
         range-separator="至"
         start-placeholder="开始日期"
         end-placeholder="结束日期"
@@ -15,15 +33,26 @@
         >
       </el-date-picker>
       <el-button class="searchBtn" type="primary" size="small" @click="queryHistoryBt">查询</el-button>
+      <el-button class="exportBtn" type="primary" size="small" v-if="exportBtnShow" @click="exportFunc">导出</el-button>
     </div>
     <el-table class="table_bjls" :max-height="max_table_height" :data="tableDataHistory" border style="width: 100%">
       <el-table-column prop="index" label="序号" header-align="center" width="100px"></el-table-column>
-      <el-table-column prop="deviceName" label="设备名称" header-align="center"></el-table-column>
-      <el-table-column prop="name" label="触发器名称" header-align="center"></el-table-column>
-      <el-table-column prop="content" label="信息" header-align="center"></el-table-column>
-      <el-table-column prop="value" label="数值" header-align="center"></el-table-column>
-      <el-table-column prop="time" label="时间" header-align="center"></el-table-column>
+      <el-table-column prop="name" label="报警名称" header-align="center"></el-table-column>
+      <el-table-column prop="warnTypeName" label="报警类型名字" header-align="center"></el-table-column>
+      <el-table-column prop="mac" label="设备mac" header-align="center"></el-table-column>
+      <el-table-column prop="content" label="报警内容" header-align="center"></el-table-column>
+      <el-table-column prop="time" label="报警时间" header-align="center"></el-table-column>
     </el-table>
+     <div class="block">
+    
+    <el-pagination
+      @size-change="handleSizeChange"
+      @current-change="handleCurrentChange"
+      :current-page.sync="currentPage1"
+      layout="total, prev, pager, next"
+      :total="totals">
+    </el-pagination>
+  </div>
   </div>
 </template>
 
@@ -43,9 +72,14 @@ export default {
         'productId': '',                      // 当前产品ID号
         'deviceId': '',                       // 当前设备ID号
         'datastream_id': '',
-        'startTime': '',
-        'endTime': '',
-        'sort': 'DESC'                        // 值为DESC|ASC时间排序方式，DESC:倒序，ASC升序，默认升序
+        'start': '',
+        'end': '',
+        'sort': 'DESC',                        // 值为DESC|ASC时间排序方式，DESC:倒序，ASC升序，默认升序
+        'page': 1,
+        'size': 15,
+        'condition': '',
+        'type': 0
+
       },
       tableDataHistory: [{
         number: '',
@@ -55,6 +89,10 @@ export default {
         value: '',
         time: ''
       }],
+      deviceListInfo: [],
+      deviceSelected: '',
+      currentPage1: 0,
+      totals: 0,
       time: [],
       // valueStart: '',                            // 选择时间实时双向绑定数据源
       // valueEnd: '',
@@ -82,9 +120,10 @@ export default {
     this.param.userId = sessionGetStore('userId')
     this.param.Authorization = sessionGetStore('Authorization')
     this.param.sn = sessionGetStore('deviceSNNow')
+    this.param.condition = sessionGetStore('deviceSNNow')
     
     // 修改表格最大高度
-    this.max_table_height = document.documentElement.clientHeight - 195
+    this.max_table_height = document.documentElement.clientHeight - 229
 
     // // 测试数据
     // this.time = ['2019-05-12 16:00:00', '2019-06-10 22:18:44']
@@ -97,21 +136,72 @@ export default {
     //   this.param.deviceId = response.data[0].deviceId
     // }.bind(this))
     // 清空数据
+    this.backDevInfoQue()
     this.tableDataHistory = []                          // 页面表格显示'暂无数据'
   },
   //
   // ****************方法函数***********************
   //
   methods: {
+    handleSizeChange (val) {
+      console.log(`每页 ${val} 条`)
+    },
+    handleCurrentChange (val) {
+      this.param.page = val
+      this.backQueryHistory()
+      console.log(`当前页: ${val}`)
+    },
+    querySearch (queryString, cb) {
+      var restaurants = this.deviceListInfo
+      var results = queryString ? restaurants.filter(this.createFilter(queryString)) : restaurants
+      // 调用 callback 返回建议列表的数据
+      cb(results)
+    },
+    clearall (e) {
+     
+      this.param.type = 0
+      this.param.condition = sessionGetStore('deviceSNNow')
+    },
+    handleSelect (item) {
+      console.log(item)
+      this.deviceSelected = item.name
+      this.param.condition = item.mac
+      this.param.type = 1
+    },
+    
+    createFilter (queryString) {
+      return (restaurant) => {
+        return (restaurant.name.toLowerCase().indexOf(queryString.toLowerCase()) >= 0);
+      }
+    },
+    // 后台查询网关下监控点列表信息
+    backDevInfoQue: function () {
+      back.relatioMonitorPoint(this.param).then(function (response) {
+        debugger
+        // console.log('网关下设备列表信息')
+        // console.log(response)
+       
+        if (response.errno !== 0) {
+          this.notificationInfo('错误提示', response.error)
+        } else {
+          this.deviceListInfo =  response.data
+        }
+      }.bind(this))
+    },
     // 时间发生变化
     timeChange (value) {
       console.log(value)
+      this.time = value
     },
     // 历史数据查询按键对应的方法
     queryHistoryBt: function () {
       console.log(this.time)
-      this.param.startTime = this.time[0]
-      this.param.endTime = this.time[1]
+      if (this.time === null) {
+        this.notificationInfo('提示：', '请选择日期')
+        return
+      }
+      this.param.start = this.time[0]
+      this.param.end = this.time[1]
       // this.param.startTime = '2019-03-01 00:00:00'
       // this.param.endTime = '2019-05-31 00:00:00'
       // 后台查询历史报警数据
@@ -122,12 +212,12 @@ export default {
     },
     // 导出表格
     exportFunc () {
-      this.param.startTime = this.time[0]
-      this.param.endTime = this.time[1]
+      this.param.start = this.time[0]
+      this.param.end = this.time[1]
       console.log('导出表格')
       // ...下载数据...只允许下载一个月数据
       let dataLimit = 30 * 24 * 60 * 60 * 1000
-      if (new Date(this.param.endTime).getTime() - new Date(this.param.startTime).getTime() >= dataLimit) {
+      if (new Date(this.param.end).getTime() - new Date(this.param.start).getTime() >= dataLimit) {
         this.notificationInfo('提示：', '最多只允许下载30天数据')
         return
       }
@@ -182,24 +272,46 @@ export default {
     */
     // 后台查询历史报警数据
     backQueryHistory: function () {
+      console.log(this.deviceSelected)
+      var istrue =  this.deviceListInfo.findIndex(v => v.name === this.deviceSelected) !== -1
+      if (this.deviceSelected === '') {
+        // this.param.type = 0
+        this.param.condition = sessionGetStore('deviceSNNow')
+      }
+      if (!istrue && this.deviceSelected !== '') {
+        this.notificationInfo('错误提示：', '选择有误')
+        return 
+      }
+      if (this.time.length < 1) {
+        this.notificationInfo('错误提示：', '请选择日期')
+        return 
+      }
       back.getHisTrigger(this.param).then(function (response) {
-        console.log(response)
         if (response.errno === 1) {
           this.notificationInfo('错误提示：', response.error)
           return
         }
         var alarmData = []
         if (response.data !== undefined) {
-          for (let i = 0; i < response.data.length; i++) {
-            var deviceAlarm = response.data[i]
-            for (var j = 0; j < deviceAlarm.warnDataEty.length; j++) {
-              var alarmDataObj = deviceAlarm.warnDataEty[j]
-              alarmDataObj.deviceName = deviceAlarm.name ? deviceAlarm.name : '未知设备'
-              var alarmDataLength = alarmData.length
-              alarmData[alarmData.length] = alarmDataObj
-              alarmData[alarmDataLength].index = alarmDataLength + 1
-            }
-          }
+          // for (let i = 0; i < response.data.length; i++) {
+          //   var deviceAlarm = response.data[i]
+          //   for (var j = 0; j < deviceAlarm.warnDataEty.length; j++) {
+          //     var alarmDataObj = deviceAlarm.warnDataEty[j]
+          //     alarmDataObj.deviceName = deviceAlarm.name ? deviceAlarm.name : '未知设备'
+          //     var alarmDataLength = alarmData.length
+          //     alarmData[alarmData.length] = alarmDataObj
+          //     alarmData[alarmDataLength].index = alarmDataLength + 1
+          //   }
+          // }
+        
+          var arr = []
+          response.data.record.map((item, index) => {
+            item.index = index + 1
+            arr.push(item)
+          })
+          this.currentPage1 = response.data.page
+          this.totals = response.data.total
+          this.tableDataHistory = arr
         } else {
           this.notificationInfo('提示：', response.error)
         }
@@ -209,20 +321,20 @@ export default {
           excelTitleStr += '\n'
           this.excelDataStr = excelTitleStr
 
-          for (let i = 0; i < alarmData.length; i++) {
+          for (let i = 0; i < response.data.record.length; i++) {
             this.excelDataStr += (i + 1).toString()
-            this.excelDataStr += ',' + alarmData[i].deviceName
-            this.excelDataStr += ',' + alarmData[i].name.toString()
-            this.excelDataStr += ',' + alarmData[i].content.toString()
-            this.excelDataStr += ',' + alarmData[i].value.toString()
-            this.excelDataStr += ',' + alarmData[i].time.replace(' ', 'T')
+            this.excelDataStr += ',' + response.data.record[i].warnTypeName
+            this.excelDataStr += ',' + response.data.record[i].name.toString()
+            this.excelDataStr += ',' + response.data.record[i].content.toString()
+            this.excelDataStr += ',' + response.data.record[i].mac.toString()
+            this.excelDataStr += ',' + response.data.record[i].time.replace(' ', 'T')
             this.excelDataStr +=  ',\n'
           }
           // 导出表格
           this.toLargerCSV()
         } else {
           // 查询数据
-          this.tableDataHistory = alarmData
+          // this.tableDataHistory = alarmData
         }
         // 导出按钮显示
         // this.exportBtnShow = true
@@ -271,10 +383,36 @@ export default {
   width: 100%;
   position: relative;
 }
+.block .el-pagination{
+  float: right;
+  margin-top: 10px;
+}
+.block .el-pagination button{
+  background-color:transparent;
+}
+.block .el-pagination li{
+  background-color:transparent;
+}
+.block .el-pagination .number{
+  color:#fff
+}
+.block .el-pagination .active{
+  color:#08c9da
+}
+
+.block .el-pagination .el-pagination__total{
+  color:#fff
+}
 .alarmhistory .top_search{
   position: absolute;
-  top: -40px;
+  top: -29px;
   right: 0;
+}
+.jkd_chose_box{
+  float: left;
+}
+.jkd_chose_box span{
+  color: #fff;
 }
 .alarmhistory .time_select_div{
   width: 316px;

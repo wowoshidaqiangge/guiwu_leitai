@@ -3,40 +3,95 @@
   <el-container>
     <!-- 主要内容区域 -->
     <div class="main">
+      <div class="select_device" v-if='nbsure'>
+        <!-- <span>设备类型选择：</span>
+        <el-select
+          v-model="deviceTypeSelected"
+          size="small"
+          placeholder="请选择"
+          @change="deviceTypeChange"
+        >
+          <el-option
+            v-for="(item, index) in deviceTypeObj"
+            :key="index"
+            :label="item.name"
+            :value="item.type"
+          ></el-option>
+        </el-select> -->
+      
+      </div>
       <!-- 表格信息区域 -->
       <el-row class="deviceTableDiv">
         <!-- 设备下的远程控制信息表格 -->
-        <el-table
-          :data="remoteControlData"
-          :max-height="max_table_height"
-          size="medium"
-          border
-          class="deviceTable"
-          :row-class-name="tableRowClassName"
-          v-if="tableShow"
-        >
-          <el-table-column prop="name" width="200" label="设备名称" header-align="center"></el-table-column>
-          <el-table-column v-for="(item, index) in tableCol" :key="index" :label='"控制"+item' header-align="center">
-            <template slot-scope="scope">
-              <div v-if="scope.row['jkd' + index].auth===1">
-                <div class="tbcell_left">{{scope.row['jkd' + index].name}}</div>：
-                <div class="tbcell_right">
-                  <el-switch
-                    v-model="scope.row['jkd' + index].value"
-                    @change="switchChange($event, scope.$index, index)"
-                    active-color="#13ce66"
-                    inactive-color="#ff4949"
-                    :active-value="1"
-                    :inactive-value="0"
-                    :disabled="scope.row.online!==1"
+        <div v-if="nbsure">
+          <el-table
+            :data="remoteControlData"
+            :max-height="max_table_height"
+            size="medium"
+            border
+            class="deviceTable"
+            :row-class-name="tableRowClassName"
+            v-if="tableShow"
+          >
+            <el-table-column prop="name" width="200" label="设备名称" header-align="center"></el-table-column>
+          
+              <el-table-column v-for="(item, index) in tableCol" :key="index" :label='"控制"+item' header-align="center">
+              <template slot-scope="scope">
+                <div v-if="(scope.row.streams[index]&&scope.row.streams[index].dataType==0)">
+                  <div class="tbcell_left">{{scope.row[`name${index}`]}}</div>：
+                  <div class="tbcell_right"  >
+                    <el-switch
+                      v-model="scope.row['value' + index]"
+                      @click.native="switchChange1($event, scope, index,scope.row['value' + index])"
+                      active-color="#13ce66"
+                      inactive-color="#ff4949"
+                      active-value="1"
+                      :disabled="scope.row.isOnline!==1"
+                      inactive-value="0"
                     >
-                  </el-switch>
+                    </el-switch>
+                  </div>
                 </div>
-              </div>
-              <div v-else>-</div>
-            </template>
-          </el-table-column>
-        </el-table>
+                <div v-else>-</div>
+              </template>
+            </el-table-column>
+          </el-table>
+        </div>
+        <div v-if='!nbsure'>
+          <el-table
+            :data="remoteControlData"
+            :max-height="max_table_height"
+            size="medium"
+            border
+            class="deviceTable"
+            :row-class-name="tableRowClassName"
+            v-if="tableShow"
+          >
+            <el-table-column prop="name" width="200" label="设备名称" header-align="center"></el-table-column>
+            <el-table-column v-for="(item, index) in tableCol" :key="index" :label='"控制"+item' header-align="center">
+              <template slot-scope="scope">
+                <div v-if="scope.row['jkd' + index].auth===1">
+                  <div class="tbcell_left">{{scope.row['jkd' + index].name}}</div>：
+                  <div class="tbcell_right">
+                    <el-switch
+                      v-model="scope.row['jkd' + index].value"
+                      @click.native="switchChange($event, scope.$index, index)"
+                      active-color="#13ce66"
+                      inactive-color="#ff4949"
+                      :active-value="1"
+                      :inactive-value="0"
+                      :disabled="scope.row.isOnline!==1"
+                      >
+                    </el-switch>
+                  </div>
+                </div>
+                <div v-else>-</div>
+              </template>
+            </el-table-column>
+             
+          </el-table>
+        </div>
+        
       </el-row>
     </div>
   </el-container>
@@ -66,80 +121,12 @@ export default {
       deviceListInfo: [],
       // 监控点表格数据
       remoteControlData: [
-        // {
-        //   name: '设备1',
-        //   jkd0: {
-        //     name: '远程控制1-1',
-        //     auth: 1,
-        //     status: 1
-        //   },
-        //   jkd1: {
-        //     name: '远程控制1-2',
-        //     auth: 1,
-        //     status: 0
-        //   },
-        //   jkd2: {
-        //     name: '远程控制1-3',
-        //     auth: 1,
-        //     status: 1
-        //   },
-        //   jkd3: {
-        //     name: '远程控制1-4',
-        //     auth: 1,
-        //     status: 1
-        //   }
-        // },
-        // {
-        //   name: '设备2',
-        //   jkd0: {
-        //     name: '远程控制2-1',
-        //     auth: 0,
-        //     status: 1
-        //   },
-        //   jkd1: {
-        //     name: '远程控制2-2',
-        //     auth: 1,
-        //     status: 0
-        //   },
-        //   jkd2: {
-        //     name: '远程控制2-3',
-        //     auth: 1,
-        //     status: 1
-        //   },
-        //   jkd3: {
-        //     name: '远程控制2-4',
-        //     auth: 0,
-        //     status: 0
-        //   }
-        // },
-        // {
-        //   name: '设备3',
-        //   jkd0: {
-        //     name: '远程控制3-1',
-        //     auth: 1,
-        //     status: 1
-        //   },
-        //   jkd1: {
-        //     name: '远程控制3-2',
-        //     auth: 1,
-        //     status: 1
-        //   },
-        //   jkd2: {
-        //     name: '远程控制3-3',
-        //     auth: 1,
-        //     status: 1
-        //   },
-        //   jkd3: {
-        //     name: '远程控制3-4',
-        //     auth: 1,
-        //     status: 1
-        //   }
-        // }
       ],
       // 表格的列
       tableCol: [],
       // 当前权限
-      auth: ''
+      auth: '',
+      nbsure: false
     }
   },
   created () {
@@ -164,10 +151,20 @@ export default {
     this.max_table_height = document.documentElement.clientHeight - 195
   },
   mounted: async function () {
-    // 获取网关下监控点列表信息
-    await this.backDevInfoQue()
-    // 轮询查询---获取网关下监控点列表信息
-    this.lxctimer = setInterval(this.backDevInfoQue.bind(this), 4000)
+    let isnb = sessionGetStore('isnb')
+    if (isnb === 'true') {
+      console.log('11111')
+      this.nbsure = true
+      await this.getrelatioNbstreams()
+      this.lxctimer = setInterval(this.getrelatioNbstreams.bind(this), 5000)
+      // debugger
+    } else {
+      this.nbsure = false
+      // 获取网关下监控点列表信息
+      await this.backDevInfoQue()
+      // 轮询查询---获取网关下监控点列表信息
+      this.lxctimer = setInterval(this.backDevInfoQue.bind(this), 5000)
+    }
   },
   beforeDestroy () {
     // 停止定时器
@@ -175,33 +172,133 @@ export default {
     clearInterval(this.lxctimer)
   },
   methods: {
+   
+    getrelatioNbstreams: function () {
+      // return new Promise(
+      //   function (resolve, reject) {
+          back.relatioNbstreams(this.param)
+            .then(function (response) {
+              if (response.errno !== 0) {
+                this.notificationInfo('错误提示', response.error)
+                reject()
+              } else {
+                // 遍历设备
+                let arr = []
+                let arr1 = []
+                for (let a = 0; a < 12; a++) {
+                  arr.push({prop: `value${a}`, num: a + 1})
+                }
+                response.data.map((item, index) => {
+                  item.streams.map((v, m) => {
+                    item[`name${m}`] = v.name
+                  })
+                  arr1.push(item)
+                })
+                // this.tableCol = arr
+                this.sensorListData1 = arr1
+                this.nbgetnbcurrent1()
+              }
+            }.bind(this))
+        // }.bind(this))
+    }, 
+    nbgetnbcurrent1 () {
+      return new Promise(
+        function (resolve, reject) {
+      
+          back.getnbcurrent({groupUid: this.param.sn})
+            .then(function (response) {
+            
+              let senlist = this.sensorListData1
+              response.data.map((item, index) => {
+                let a = senlist.filter(v => v.mac === item.mac)
+                senlist.slice(index, 1)
+                a[0].streams.map((it, num) => {
+                  let issure1 =  item.datas.filter(v => v.streamId === it.streamId)
+                  if (issure1.length > 0) {
+                    a[0][`value${num}`] =  issure1[0].value
+                  }
+                })
+              })
+            
+              this.remoteControlData = senlist
+              this.tableShow = true
+             
+            }.bind(this))
+        }.bind(this))
+    },   
     /*
     //  ************  用户操作触发方法  ************
     */
+    switchChange1 (newVal, scopeIndex, colIndex,val) {
+      // newVal：新值, scopeIndex：行的序号, colIndex：列的序号
+      // console.log(this.remoteControlData,scopeIndex)
+      if (this.remoteControlData[scopeIndex.$index].isOnline !== 1) {
+        return
+      }
+      // console.log(this.remoteControlData[scopeIndex.$index]['value' + colIndex],newVal, scopeIndex, colIndex)
+      var paramObj = {
+       
+        mac: scopeIndex.row.mac, // 设备mac
+        type: 2, // 数据流id
+        controlBit: colIndex + 1, // 值
+        value: val
+      }
+      this.remoteControlData[scopeIndex.$index]['value' + colIndex] = val==="0" ? "1":"0"
+      clearInterval(this.lxctimer)
+      // console.log(paramObj)
+      back.nbcommand(paramObj).then(function (response) {
+        // console.log(response)
+        if (response.errno !== 0) {
+          this.lxctimer = setInterval(this.backDevInfoQue.bind(this), 5000)
+          this.notificationInfo('错误提示', response.error)
+        } else {
+          // 修改页面效果
+          // this.$set(this.remoteControlData[scopeIndex], ['jkd' + colIndex].value, newVal)
+          // 此方法只会改变值，页面不生效
+          // this.remoteControlData[scopeIndex]['jkd' + colIndex].value = newVal
+          
+          this.notificationInfo('提示', '远程控制成功')
+          this.lxctimer = setInterval(this.getrelatioNbstreams.bind(this), 5000)
+        }
+        // setTimeout(() =>  {
+        //   this.getrelatioNbstreams()
+        //   this.lxctimer = setInterval(this.getrelatioNbstreams.bind(this), 6000)
+        // }, 8000);
+      }.bind(this))
+    },
     // 开关操作
+    // 
     switchChange (newVal, scopeIndex, colIndex) {
       // newVal：新值, scopeIndex：行的序号, colIndex：列的序号
-      console.log(newVal)
-      console.log(scopeIndex)
-      console.log(colIndex)
-      // console.log(this.remoteControlData)
+  
+      if (this.remoteControlData[scopeIndex].isOnline !== 1) {
+        return
+      }
+      // console.log(this.remoteControlData[scopeIndex]['jkd' + colIndex].value, scopeIndex, colIndex)
       var paramObj = {
         sn: sessionGetStore('deviceSNNow'), // 网关sn
         mac: this.remoteControlData[scopeIndex].mac, // 设备mac
         streamId: this.remoteControlData[scopeIndex].streams[colIndex].streamId, // 数据流id
-        value: newVal // 值
+        value: this.remoteControlData[scopeIndex]['jkd' + colIndex].value // 值
       }
+      clearInterval(this.lxctimer)
       // console.log(paramObj)
       back.remoteControl(paramObj).then(function (response) {
         // console.log(response)
         if (response.errno !== 0) {
+          this.lxctimer = setInterval(this.backDevInfoQue.bind(this), 5000)
           this.notificationInfo('错误提示', response.error)
         } else {
           // 修改页面效果
-          this.$set(this.remoteControlData[scopeIndex], ['jkd' + colIndex].value, newVal)
+          // this.$set(this.remoteControlData[scopeIndex], ['jkd' + colIndex].value, newVal)
           // 此方法只会改变值，页面不生效
           // this.remoteControlData[scopeIndex]['jkd' + colIndex].value = newVal
           this.notificationInfo('提示', '远程控制成功')
+          this.lxctimer = setInterval(this.backDevInfoQue.bind(this), 5000)
+          // setTimeout(() =>  {
+            // this.lxctimer = setInterval(this.backDevInfoQue.bind(this), 6000)
+            // this.remoteControlData[scopeIndex]['jkd' + colIndex].value = !this.remoteControlData[scopeIndex]['jkd' + colIndex].value
+          // }, 8000);
         }
       }.bind(this))
     },
@@ -243,11 +340,12 @@ export default {
     },
     // 行类名---通过设置类名来设置样式
     tableRowClassName ({row, rowIndex}) {
+     
       // console.log(row)
-      if (row.online === 1) {
+      if (row.isOnline === 1) {
         // 在线
         return ''
-      } else if (rowIndex === 0) {
+      } else {
         // 不在线
         return 'offlineClass '
       }
@@ -262,6 +360,7 @@ export default {
         function (resolve, reject) {
           back.relatioMonitorPoint(this.param)
             .then(function (response) {
+              console.log('22222222222------------------')
               if (response.errno !== 0) {
                 this.notificationInfo('错误提示', response.error)
                 reject()
@@ -284,20 +383,22 @@ export default {
                 var deviceListArr = []
                 // 遍历设备
                 for (let i = 0; i < response.data.length; i++) {
-                  if (response.data[i].type === 1) {
+                  if (response.data[i].type === 1 || response.data[i].type === 3) {
                     // 设备是ispd设备
                     let obj = {}
                     obj.name = response.data[i].name
                     obj.mac = response.data[i].mac
-                    obj.online = response.data[i].isOnline
+                    obj.isOnline = response.data[i].isOnline
                     obj.isWarn = response.data[i].isWarn
                     var streamsArr = response.data[i].streams.slice(-4)
                     obj.streams = streamsArr
                     deviceListArr[deviceListArr.length] = obj
                   }
                 }
+                
                 // 设备列表数据---更新
                 this.deviceListInfo = deviceListArr
+                // debugger
                 // console.log(this.deviceListInfo)
                 // 监控信息查询前置方法
                 this.mointorInfoInit()
@@ -355,7 +456,7 @@ export default {
           this.remoteControlData = this.deviceListInfo
           // 表格显示状态---显示
           this.tableShow = true
-          console.log(this.remoteControlData)
+          // console.log(this.remoteControlData)
         }.bind(this)
       )
     },
@@ -410,6 +511,18 @@ export default {
 .deviceTable td .el-button--medium {
   padding: 0 20px;
 }
+.select_device {
+  position: absolute;
+  right: 0;
+  top: -40px;
+  z-index: 2;
+  color: #fff;
+}
+.select_device .el-button--primary {
+  color: #05494f;
+  font-size: 14px;
+}
+
 .select_device .el-select .el-input__inner {
   background-color: #073846;
   border-color: transparent !important;

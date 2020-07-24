@@ -49,6 +49,10 @@ var modularAlarm = {
         {
           label: '=',
           value: '=='
+        },
+        {
+          label: '变化',
+          value: 'change'
         }
       ],
       alarmThreshold: {
@@ -390,6 +394,10 @@ var modularAlarm = {
         {
           label: '=',
           value: '=='
+        },
+        {
+          label: '变化',
+          value: 'change'
         }
       ],
       alarmThreshold: {

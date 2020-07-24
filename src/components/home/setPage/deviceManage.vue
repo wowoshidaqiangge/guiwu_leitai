@@ -211,10 +211,17 @@
             <div class="streams_content">
               <!-- v-model="streamWatchArr"  @change="checkboxChose" -->
               <div class="streams_content_item" v-for="(item,index) in diaNodeInfoForm.streamNameList" :key="index">
-                <div class="streams_item_left">监控点{{index+1}}</div>
-                <el-input class="streams_item_center" v-model="item.name" :placeholder="item.name"></el-input>
-                <!-- <el-checkbox class="streams_item_right" v-model="streamWatchArr[index]" :label="index" :true-label='1' :false-label='0'></el-checkbox> -->
-                <el-checkbox class="streams_item_right" v-model="item.auth" :label="index" :true-label='1' :false-label='0'></el-checkbox>
+                <div>
+                  <div class="streams_item_left">监控点{{index+1}}</div>
+                  <el-input class="streams_item_center" v-model="item.name" :placeholder="item.name"></el-input>
+                  <!-- <el-checkbox class="streams_item_right" v-model="streamWatchArr[index]" :label="index" :true-label='1' :false-label='0'></el-checkbox> -->
+                  <el-checkbox class="streams_item_right" v-model="item.auth" :label="index" :true-label='1' :false-label='0'></el-checkbox>
+                </div>
+                <div v-if="(index > 4 && index < 9 && diaNodeInfoForm.type === 2) || (index > 8 && index < 11  && diaNodeInfoForm.type === 1)" class="subText">
+                  倍率：
+                  <el-input v-model="item.coefficient" oninput="value=value.replace(/[^\d.]/g,'')" size="mini" class="beilv"></el-input>
+                </div>
+                <div v-else class="subText"></div>
               </div>
             </div>
           </div>
@@ -411,6 +418,7 @@ export default {
       for (var i = 0; i < this.deviceStreamInfo.length; i++) {
         streamArrBackups[i] = {
           name: this.deviceStreamInfo[i].streamName,
+          coefficient: 1,
           auth: 0
         }
         streamArrNormal[i] = {
@@ -443,11 +451,16 @@ export default {
     // 获取设备类型代表数字配置
     this.deviceTypeArr = JSON.parse(sessionGetStore('deviceTypeArr'))
     this.deviceTypeObj = JSON.parse(sessionGetStore('deviceTypeObj'))
-    // console.log(this.deviceTypeObj)
+    console.log(this.deviceTypeObj)
     // 获取back调用关键参数
     this.param.userId = sessionGetStore('userId')
     this.param.Authorization = sessionGetStore('Authorization')
-    this.param.sn = sessionGetStore('deviceSNNow')
+   
+    if (sessionGetStore('isnb')==='true') {
+      this.param.sn = sessionGetStore('nbmac')
+    } else {
+      this.param.sn = sessionGetStore('deviceSNNow')
+    }
     this.param.apiKey = sessionGetStore('apikeyNow')
     this.param.deviceId = sessionGetStore('deviceIdNow')
     // 设备类型选择框的当前可能选项---默认第一项
@@ -715,6 +728,17 @@ export default {
     handleGroup: function () {
       if (!this.confirmBtnShow) {
         this.notificationInfo('错误提示', '您没有此权限，请联系管理员')
+        return
+      }
+      let flag = 0
+      for (let i = 0; i < this.diaNodeInfoForm.streamNameList.length; i++) {
+        this.diaNodeInfoForm.streamNameList[i].coefficient = Number(this.diaNodeInfoForm.streamNameList[i].coefficient)
+        if (this.diaNodeInfoForm.streamNameList[i].coefficient === '' || this.diaNodeInfoForm.streamNameList[i].coefficient === 0 || this.diaNodeInfoForm.streamNameList[i].coefficient < 0) {
+          flag = 1
+        } 
+      }
+      if (flag) {
+        this.notificationInfo('错误提示', '倍率不能为空或者小于0')
         return
       }
       if (this.formAddOrModify === 0) {
@@ -1081,9 +1105,11 @@ export default {
   margin: 0 auto;
 }
 .deviceBj .streams_content .streams_content_item {
-  display: inline-block;
+  /* display: inline-block; */
   width: 50%;
   margin-bottom: 15px;
+  display: inline-flex;
+  flex-direction: column;
 }
 .deviceBj .streams_content .streams_item_left {
   display: inline-block;
@@ -1100,6 +1126,13 @@ export default {
 }
 .deviceBj .streams_content .streams_item_right {
   display: inline-block;
+}
+.beilv {
+  width: 70px;
+}
+.subText {
+    text-align: center;
+    margin-top: 5px;
 }
 
 </style>

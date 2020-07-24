@@ -8,7 +8,7 @@
             <el-tab-pane label="网关基本信息" name="first"></el-tab-pane>
             <!-- <el-tab-pane label="网关数据限制" name="second"></el-tab-pane> -->
             <el-tab-pane label="网关位置信息" name="second"></el-tab-pane>
-            <el-tab-pane label="设备管理" name="third"></el-tab-pane>
+            <el-tab-pane label="设备管理" name="third"  v-if="isnb==='false'"></el-tab-pane>
             <!-- <el-tab-pane label="网关远程更新" name="fourth"></el-tab-pane> -->
             <!-- <el-tab-pane label="全局设置" :disabled="!(param.auth <= shareAdminAuth)" name="fifth"></el-tab-pane> -->
           </el-tabs>
@@ -23,20 +23,22 @@
 
 <script>
 import Routers from '@/router'
-
+import { sessionGetStore } from '@/components/config/Utils'
 export default {
   name: 'deviceSet',
   data () {
     return {
-      activeName: 'first'
+      activeName: 'first',
       // ownerAuth: 1,                   // 拥有者权限
       // shareAdminAuth: 2,              // 分享者管理员权限  写死定死的变量，用作权限比较，parm.auth是后台获取和vuex获得的
       // shareOperateAuth: 3,            // 分享者操作工权限
       // shareNoteAuth: 4,                // 分享者记录员权限
+      isnb: sessionGetStore('isnb')
     }
   },
   created () {
     this.tabPaneSet()
+    console.log(this.isnb)
   },
   methods: {
     // Tabs标签页点击跳转

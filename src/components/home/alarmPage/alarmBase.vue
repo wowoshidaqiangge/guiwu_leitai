@@ -6,9 +6,11 @@
           <el-tabs v-model="activeName" @tab-click="toAlarmData">
             <el-tab-pane label="报警统计" name="first"></el-tab-pane>
             <!-- <el-tab-pane label="当前报警" name="second"></el-tab-pane> -->
-            <!-- <el-tab-pane label="历史报警" name="third"></el-tab-pane> -->
+           
             <el-tab-pane label="报警值设置" name="fourth"></el-tab-pane>
             <el-tab-pane label="报警联系人设置" :disabled="!(param.auth <= shareAdminAuth)" name="fifth"></el-tab-pane>
+            <el-tab-pane label="历史报警" name="third"></el-tab-pane>
+            <!-- <el-tab-pane label="报警历史记录" name="five"></el-tab-pane> -->
             <!-- <el-tab-pane label="全局设置" :disabled="!(param.auth <= shareAdminAuth)" name="fifth"></el-tab-pane> -->
           </el-tabs>
         </template>
@@ -51,7 +53,7 @@ export default {
       console.log(tab, event)
       if (tab.index === '0') Routers.push({ path: '/home/device/alarm/alarmStatistics' })
       // if (tab.index === '1') Routers.push({ path: '/home/device/alarm/alarmnow' })
-      // if (tab.index === '2') Routers.push({ path: '/home/device/alarm/alarmhistory' })
+      if (tab.index === '3') Routers.push({ path: '/home/device/alarm/alarmhistory' })
       if (tab.index === '1') Routers.push({ path: '/home/device/alarm/alarmregister' })
       if (tab.index === '2') Routers.push({ path: '/home/device/alarm/alarmauthority' })
       // if (tab.index === '4') Routers.push({ path: '/home/device/alarm/alarmset' })
@@ -62,7 +64,7 @@ export default {
       var arrUrl = url.split('/')
       if (arrUrl[arrUrl.length - 1] === 'alarmStatistics') this.activeName = 'first'
       // if (arrUrl[arrUrl.length - 1] === 'alarmnow') this.activeName = 'second'
-      // if (arrUrl[arrUrl.length - 1] === 'alarmhistory') this.activeName = 'third'
+      if (arrUrl[arrUrl.length - 1] === 'alarmhistory') this.activeName = 'third'
       if (arrUrl[arrUrl.length - 1] === 'alarmregister') this.activeName = 'fourth'
       if (arrUrl[arrUrl.length - 1] === 'alarmauthority') this.activeName = 'fifth'
       // if (arrUrl[arrUrl.length - 1] === 'alarmset') this.activeName = 'fifth'

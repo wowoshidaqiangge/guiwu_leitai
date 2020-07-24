@@ -67,6 +67,7 @@
           :props="defaultProps"
           :filter-node-method="filterNode"
           ref="devListTree"
+          :expand-on-click-node="false"
           :render-content="renderContent"
           :highlight-current="true"
           @node-click="todeviceBt">
@@ -82,9 +83,22 @@
     </el-container>
 
     <!-- 添加设备(网关) 弹出对话框 -->
-    <el-dialog class="addGateway" title="添加网关" :visible.sync="addDevDialogFormVisible" width="700px" top="50px"  center>
+    <el-dialog class="addGateway" :title="devicename" :visible.sync="addDevDialogFormVisible" width="700px" top="50px"  center>
+      <div style="padding:0 35px 15px 39px " v-if='!isedit'>
+        <el-button @click="active(false)" size="mini" :type="activeName?'':'primary'">普通网关</el-button>
+        <el-button  @click="active(true)" size="mini"  :type="activeName?'primary':''" >NB网关</el-button>
+      </div>
       <el-form :model="form">
-        <div class="item_addGateway">
+         <div class="item_addGateway" v-if="activeName">
+          <el-form-item class="addGateway_formItem" label="设备名称" :label-width="formLabelWidth">
+            <el-input v-model="form.name" placeholder="输入设备名称"></el-input>
+          </el-form-item>
+          <el-form-item class="addGateway_formItem" label="设备IMEI" :label-width="formLabelWidth">
+            <el-input v-model="form.imei" :disabled="isedit" placeholder="输入设备IMEI"></el-input>
+          </el-form-item>
+        </div>
+       
+        <div class="item_addGateway" v-if="!activeName">
           <el-form-item class="addGateway_formItem" label="网关SN" :label-width="formLabelWidth">
             <el-input v-model="form.sn" placeholder="输入网关SN"></el-input>
           </el-form-item>
@@ -93,12 +107,12 @@
           </el-form-item>
         </div>
         <div class="item_addGateway">
-          <el-form-item class="addGateway_formItem" label="网关名称" :label-width="formLabelWidth">
+          <el-form-item class="addGateway_formItem" label="网关名称" :label-width="formLabelWidth" v-if="!activeName">
             <el-input v-model="form.name" placeholder="输入网关名称"></el-input>
           </el-form-item>
           <el-form-item class="addGateway_formItem" label="网关组选择" :label-width="formLabelWidth">
             <el-select v-model="tableDataGroupSelected" placeholder="网关组">
-              <el-option v-for="item in tableDataGroup" :key="item.id" :label="item.name" :value="item.groupUid"></el-option>
+              <el-option v-for="item in tableDataGroup" :key="item.groupUid" :label="item.name" :value="item.groupUid"></el-option>
             </el-select>
           </el-form-item>
         </div>
@@ -138,6 +152,27 @@
           <!-- 地图 -->
           <div id="addwgmap"></div>
         </div>
+         <!-- 监控点配置 -->
+          <div class="streams_box" v-if="activeName">
+            <div class="streams_box_title">监控点配置</div>
+            <div class="streams_content" v-for="(item, index) in streamNameList" :key="item.streamId">
+              <!-- v-model="streamWatchArr"  @change="checkboxChose" -->
+              <div class="streams_content_item" >
+                
+                <div>
+                  <div class="streams_item_left">监控点{{index+1}}</div>
+                  <el-input class="streams_item_center" v-model="item.name" :placeholder="item.name"></el-input>
+                  <!-- <el-checkbox class="streams_item_right" v-model="streamWatchArr[index]" :label="index" :true-label='1' :false-label='0'></el-checkbox> -->
+                  <el-checkbox class="streams_item_right" v-model="item.auth" :true-label='1' :false-label='0'></el-checkbox>
+                </div>
+                <div v-if="index > 9 && index < 12" class="subText">
+                  倍率：
+                  <el-input  v-model="item.coefficient" oninput="value=value.replace(/[^\d.]/g,'')"  size="mini" class="beilv"></el-input>
+                </div>
+                <div v-else class="subText"></div>
+              </div>
+            </div>
+          </div>
       </el-form>
       <div slot="footer" class="dialog-footer">
         <el-button type="primary" class="btn_cancel_dialog" @click="addDevDialogFormVisible = false">取 消</el-button>
@@ -168,7 +203,7 @@
               <div class="alarm_deviceName">{{alarmItem.dname}}</div>
               <div class="alarm_alarmName">{{alarmItem.tname}}</div>
               <div class="alarm_alarmContent">{{alarmItem.content}}</div>
-              <el-button type="primary" class="alarm_ck" size="mini" @click="ckAlarm(gatewayIndex, alarmIndex)">查看</el-button>
+              <el-button type="primary" class="alarm_ck" size="mini" @click="ckAlarm(gatewayIndex, alarmIndex)">解除</el-button>
             </div>
           </div>
         </div>
@@ -223,6 +258,10 @@ import Stomp from 'stompjs'
 export default {
   data () {
     return {
+      isedit: false,
+      streamNameList: [], 
+      devicename: '添加网关',
+      activeName: false,
       param: {
         'Authorization': '',
         'userId': 1000,
@@ -292,6 +331,7 @@ export default {
       form: {
         index: 0,
         sn: '',
+        imei: '',
         password: '',
         name: '',
         groupUid: '',
@@ -317,7 +357,7 @@ export default {
       }, {
         id: '选项2',
         name: '设备分组二',
-        groupUid: ''
+        groupUid: '100258795781987100258795781'
       }],
       Authorization: 4,
       listbuttonVisible: true, // 控制左侧设备列表显示或隐藏
@@ -351,7 +391,8 @@ export default {
 
       },
       // 报警弹窗显示状态
-      dialogVisibleAlarm: false
+      dialogVisibleAlarm: false,
+      parentList: []
     }
   },
   computed: {
@@ -574,6 +615,19 @@ export default {
     */
   },
   mounted () {
+    this.$bus.$off('editnb').$on('editnb', target => {
+      this.addDevDialogFormVisible = true
+      this.backDevInfoGet()
+      this.mapselectpoint()
+      setTimeout(()=> {
+        this.getnbdevice(target)
+      },0)
+      
+      this.devicename = '修改网关'
+      this.isedit = true
+     
+      this.activeName = true
+    })
     // 获取用户下网关列表信息
     this.backDevInfoGet()
     // 开启定时器，定时查询onenet平台的监控点数据和在线离线信息；
@@ -595,6 +649,22 @@ export default {
     })
   },
   methods: {
+    getnbdevice (id) {
+      let obj = {mac: id}
+      back.nbdevice(obj).then(res => {
+        console.log(1222222222)
+        if (res.errno === 0) {
+          this.form = res.data
+          this.streamNameList  = res.data.streamNameList
+          this.tableDataGroupSelected = res.data.groupUid
+        } else {
+          this.notificationInfo('错误提示', res.error)
+        }
+      })
+    },
+    active (istrue) {
+      this.activeName = istrue
+    },
     // 打开报警内容容器
     openAlarmList () {
       // 报警内容容器显示状态---显示
@@ -755,7 +825,7 @@ export default {
           </span>
           <span>
             <el-button style="font-size: 14px; color: #ff0000;" type="text" >{node.data.alarm}</el-button>
-            <el-button style="font-size: 14px;" type="text" >{node.data.online}</el-button>
+            <el-button style="font-size: 14px;" type="text">{node.data.online !== undefined ? (node.data.online === 1 ? '在线' : '离线') : ''}</el-button>
           </span>
         </span>
       )
@@ -766,11 +836,32 @@ export default {
       if (data.label === undefined) return false
       return data.label.indexOf(value) !== -1
     },
+   
+    getParent (node) {
+      if (node.level == 1) {
+        sessionSetStore('deviceSNNow', node.data.id)
+        sessionSetStore('groupid', node.data.id)
+        sessionSetStore('groupName', node.data.label)
+        this.$store.commit('setDeviceSNNow', node.data.id)
+        return
+      }
+      // 判断当前节点是否有父节点，并且父节点上的data不能是数组
+      if (node.parent && !Array.isArray(node.parent.data)) {
+        // 将父节点上data的menuid存储在 `parentlist` 里
+        if (node.parent.data.apiKey && node.parent.data.sn && node.parent.data.id && node.parent.data.label) {
+          this.parentList.push({apiKey: node.parent.data.apiKey, id: node.parent.data.id, sn: node.parent.data.sn, label:node.parent.data.label})
+        }
+        // 递归调用 父节点上有父节点
+        this.getParent(node.parent)
+        // 当父节点上data是数组时e799bee5baa6e79fa5e98193e58685e5aeb931333431373234点击对象为当前tree最高目录 并且parentList必须是0
+      } 
+    },
     // 加载设备监控页面(点击网关)
-    todeviceBt (data) {
+    todeviceBt (data, node, obj) {
       // console.log('点击分组')
-      // console.log(data)
-      if (data.children === undefined) { // 点击子节点网关，若没有children则跳转到blankToDevice，以此来阻止点击小组的跳转
+      this.parentList = []
+      this.getParent(node)
+      if (node.level !== 1) { // 点击子节点网关，若没有children则跳转到blankToDevice，以此来阻止点击小组的跳转
         this.$nextTick(() => {           // {}外的程序先执行
           // console.log('点击分组下网关')
           let treeBox = document.getElementsByClassName('el-tree-node')
@@ -780,15 +871,74 @@ export default {
           let treeSelBox = document.getElementsByClassName('el-tree-node is-current')
           treeSelBox[0].style.backgroundColor = '#D9D9D9' // 选择之后的颜色，客户端交互
         })
-        this.$store.commit('setDeviceSNNow', data.sn)
-        this.$store.commit('setDeviceApiKeyNow', data.apiKey)
-        this.$store.commit('setDeviceIdNow', data.id)
-        sessionSetStore('deviceSNNow', data.sn)
-        sessionSetStore('apikeyNow', data.apiKey)
-        sessionSetStore('deviceIdNow', data.id)
+        if (data.type === 3 && node.level === 3) {
+          // 点击NB类型网关下的设备
+          sessionSetStore('isnb', true)
+          sessionSetStore('nbmac', data.mac)
+          sessionSetStore('onenb',true)
+          sessionSetStore('gatewayName', data.label1)
+          this.$bus.$emit('isnb', true)
+          // console.log(sessionGetStore('onenb'))
+          // console.log(sessionGetStore('nbmac'))
+          Routers.push({ path: '/home/blankToDevice1' })          
+          // Routers.push({ path: `/home/device/data/deviceNb` , query: { id: data.mac }})
+        } else if (data.type === 0 && node.level === 2) {
+          // 点击NB类型网关
+          sessionSetStore('isnb', true)
+          sessionSetStore('onenb',false)
+          sessionSetStore('gatewayName', data.label1)
+          sessionSetStore('groupid', node.parent.data.id)
+          this.$bus.$emit('isnb', true)
+          Routers.push({ path: '/home/blankToDevice1' })          
+          // console.log(sessionGetStore('onenb'))
+          // console.log(sessionGetStore('groupid'))
+          // Routers.push({ path: `/home/device/data/deviceNb` , query: { id: node.parent.data.id }})
+        } else {
+          sessionSetStore('isnb', false)
+          // debugger
+          if (node.level === 3) {
+            if (data.type === 0) {
+              this.$store.commit('setDeviceSNNow', data.mac)
+              sessionSetStore('deviceSNNow',  data.mac)
+            } else {
+              this.$store.commit('setDeviceSNNow', node.parent.data.sn)
+              sessionSetStore('deviceSNNow',  node.parent.data.sn)
+            }
+            this.$store.commit('setDeviceApiKeyNow', this.parentList[0].apiKey)
+            this.$store.commit('setDeviceIdNow', this.parentList[0].id)
+            sessionSetStore('onenb',true)
+            sessionSetStore('gatewayName', data.label1)
+            sessionSetStore('apikeyNow', this.parentList[0].apiKey)
+            sessionSetStore('deviceIdNow', this.parentList[0].id)
+          } else if (node.level === 4){
+            this.$store.commit('setDeviceSNNow', node.parent.data.mac)
+            this.$store.commit('setDeviceApiKeyNow', this.parentList[0].apiKey)
+            this.$store.commit('setDeviceIdNow', this.parentList[0].id)
+            sessionSetStore('onenb',true)
+            sessionSetStore('deviceSNNow', node.parent.data.mac)
+            sessionSetStore('gatewayName', data.label1)
+            sessionSetStore('apikeyNow', this.parentList[0].apiKey)
+            sessionSetStore('deviceIdNow', this.parentList[0].id)
+          } else {
+            this.$store.commit('setDeviceSNNow', data.sn)
+            this.$store.commit('setDeviceApiKeyNow', data.apiKey)
+            this.$store.commit('setDeviceIdNow', data.id)
+            sessionSetStore('onenb',false)
+            sessionSetStore('deviceSNNow', data.sn)
+            sessionSetStore('gatewayName', data.label1)
+            sessionSetStore('apikeyNow', data.apiKey)
+            sessionSetStore('deviceIdNow', data.id)
+          }
+          Routers.push({ path: '/home/blankToDevice' })
+        }
+        // Routers.push({ path: '/home/blankToDevice' })
         // console.log('网关sn ：' + data.sn)
         // console.log(this.$store.state.deviceApiKeyNow)
-        Routers.push({ path: '/home/blankToDevice' }) // 相当于加了一个跳转页面的限制条件，在if下才会跳转，否则则会点击小组名就会触发跳转，导致el-tree自带事件被影响，不能够展开
+       
+        // back.relatioMonitorPoint(data.sn).then(function (response) {
+        //   debugger
+        // })
+        // 相当于加了一个跳转页面的限制条件，在if下才会跳转，否则则会点击小组名就会触发跳转，导致el-tree自带事件被影响，不能够展开
       }
     },
     /*
@@ -810,6 +960,7 @@ export default {
       }
       // console.log('添加设备')
       // console.log(this.tableDataGroup)
+      this.isedit = false
       this.form.sn = ''
       this.form.password = ''
       this.form.name = ''
@@ -819,6 +970,23 @@ export default {
         'lon': '',
         'ele': ''
       }
+      this.streamNameList =  [
+        {name: '远控1', auth: 0, streamId: 1, coefficient: 1},
+        {name: '远控2', auth: 0, streamId: 2, coefficient: 1},
+        {name: '远控3', auth: 0, streamId: 3, coefficient: 1},
+        {name: '远控4', auth: 0, streamId: 4, coefficient: 1},
+        {name: '电平跳变1', auth: 0, streamId: 5, coefficient: 1},
+        {name: '电平跳变2', auth: 0, streamId: 6, coefficient: 1},
+        {name: '电平跳变3', auth: 0, streamId: 7, coefficient: 1},
+        {name: '电平跳变4', auth: 0, streamId: 8, coefficient: 1},
+        {name: '电平跳变5', auth: 0, streamId: 9, coefficient: 1},
+        {name: '脉冲次数', auth: 0, streamId: 10, coefficient: 1},
+        {name: '电压', auth: 0, streamId: 11, coefficient: 1},
+        {name: '电流', auth: 0, streamId: 12, coefficient: 1}
+      ]
+      this.devicename = '添加网关'
+     
+      this.activeName = false
       this.form.province = '' // 设备所在省份
       this.form.city = '' // 设备所在城市
       this.form.locationKeyWord = '' // 地点关键词
@@ -872,21 +1040,46 @@ export default {
     },
     // 添加设备(网关)对话框确认按键
     deviceaddBt () {
-      if (this.form.name === '' || this.form.sn === '' || this.form.password === '') {
-        this.notificationInfo('错误提示', '参数不能为空')
-        return
-      }
       // if (this.checkDevName(this.param.name)) {
       //   this.notificationInfo('错误提示', '设备名称不能重复')
       //   return
       // }
-      this.param.password = this.form.password
-      this.param.sn = this.form.sn
+      console.log(this.form)
+  
+      let flag = 0
+      for (let i = 0; i < this.streamNameList.length; i++) {
+        this.streamNameList[i].coefficient = Number(this.streamNameList[i].coefficient)
+        if (this.streamNameList[i].coefficient === '' || this.streamNameList[i].coefficient === 0 || this.streamNameList[i].coefficient < 0) {
+          flag = 1
+        } 
+      }
+      if (flag) {
+        this.notificationInfo('错误提示', '倍率不能为空或者小于0')
+        return
+      }
+      if (this.activeName) {
+        if (this.form.name === '' || this.form.imei === '') {
+          this.notificationInfo('错误提示', '参数不能为空')
+          return
+        }
+        this.param.streamNameList = this.streamNameList
+        this.param.imei = this.form.imei
+      } else {
+        if (this.form.name === '' || this.form.sn === '' || this.form.password === '') {
+          this.notificationInfo('错误提示', '参数不能为空')
+          return
+        }
+        this.param.password = this.form.password
+        this.param.sn = this.form.sn 
+      }
+     
+      this.param.mac = sessionGetStore('nbmac')
       this.param.name = this.form.name
       // this.param.location = this.form.location
       this.param.groupUid = this.tableDataGroupSelected
       // this.param.location = this.form.location
       // console.log(this.form.location)
+     
       this.param.location = {
         'lat': parseFloat(this.form.location.lat).toFixed(6),
         'lon': parseFloat(this.form.location.lon).toFixed(6)
@@ -896,7 +1089,13 @@ export default {
       this.param.city = this.form.city
       // console.log(this.param)
       // 添加设备
-      this.backDeveiceAdd()
+      
+      // 修改设备
+      if (this.isedit) {
+        this.getnbdeviceput()
+      } else {
+        this.backDeveiceAdd()
+      }
       this.addDevDialogFormVisible = false
     },
     // 检查设备名称是否重复
@@ -1143,24 +1342,48 @@ export default {
         this.deviceInfoStore(response)
       }.bind(this))
     },
+    // 修改
+    getnbdeviceput () { 
+      back.nbdeviceput(this.param).then(res => {
+        if (res.errno === 0) {
+          this.notificationInfo('提示', '修改成功')
+          // 用户下设备信息获取
+        } else {
+          this.notificationInfo('错误提示', res.error)
+        }
+      })
+    },
     // 添加设备
     backDeveiceAdd: function () {
       console.log(this.param)
-      back.addNetgate(this.param).then(function (response) {
-        // console.log(response)
-        // 进行新设备的添加
-        // 先判断是否添加成功，失败则弹出失败信息
-        // 若成功，则刷新设备列表，弹出成功信息
-        if (response.errno !== 0) {
-          this.notificationInfo('错误提示', response.error)
-        } else {
-          this.notificationInfo('提示', '添加设备成功')
-          console.log(response)
-          // 用户下设备信息获取
-          this.backDevInfoGet()
-        }
-      }.bind(this))
+      if (this.activeName) {
+        back.addnbdevice(this.param).then(res => {
+          if (res.errno === 0) {
+            this.notificationInfo('提示', '添加成功')
+            // 用户下设备信息获取
+            this.backDevInfoGet()
+          } else {
+            this.notificationInfo('错误提示', res.error)
+          }
+        })
+      } else {
+        back.addNetgate(this.param).then(function (response) {
+          // console.log(response)
+          // 进行新设备的添加
+          // 先判断是否添加成功，失败则弹出失败信息
+          // 若成功，则刷新设备列表，弹出成功信息
+          if (response.errno !== 0) {
+            this.notificationInfo('错误提示', response.error)
+          } else {
+            this.notificationInfo('提示', '添加设备成功')
+            console.log(response)
+            // 用户下设备信息获取
+            this.backDevInfoGet()
+          }
+        }.bind(this))
+      }
     },
+    
     /*
     //  ************  方法函数  *************
     */
@@ -1217,33 +1440,63 @@ export default {
     // 设备列表信息存储到当前组件内
     deviceInfoStore: function (info) {
       let devicesinfo = [] // 网关列表数组
+      // info.data.map( (item, index) => {
+      //   var obj = {}
+      //   obj.id = item.groupUid
+      //   obj.label = item.groupName
+      //   obj.children = item.devices
+      //   if (item.devices) {
+      //     var arr = {}
+      //     item.devices.map(it=>{
+            
+      //     })
+      //   }
+      // })
       if (info.errno === 0) {
         // 设备组
         // 设备列表信息存储到当前左侧组件内
         for (let j = 0; j < info.data.length; j++) {
           let devicesgroup = {}                                       // 网关数组中的一个对象
           devicesgroup.id = info.data[j].groupUid
-          devicesgroup.label = info.data[j].groupName
+          devicesgroup.label = info.data[j].label
           // devicesgroup.online = ''
           // devicesgroup.alarm = ''
           let data = []                                               // 网关数组->对象->数组(chidldren数组)
-          if (info.data[j].devices === undefined) {
+          if (info.data[j].children === undefined) {
             data[0] = {}                                              // children数组内对象为空
             devicesgroup.children = data
             devicesinfo[j] = devicesgroup
             continue
           }
           // 组内设备
-          for (let k = 0; k < info.data[j].devices.length; k++) {
+          for (let k = 0; k < info.data[j].children.length; k++) {
             let obj = {}                                              // children数组内对象
-            obj.id = info.data[j].devices[k].deviceId
-            obj.label = info.data[j].devices[k].name
-            obj.apiKey = info.data[j].devices[k].apiKey
-            obj.sn = info.data[j].devices[k].sn
-            obj.location = info.data[j].devices[k].location
+            obj.id = info.data[j].children[k].deviceId
+            obj.children = info.data[j].children[k].children
+            if (info.data[j].children[k].children === undefined) {
+              obj.label1 = info.data[j].children[k].label
+              obj.label = info.data[j].children[k].label + '(共0台）'
+            } else {
+              obj.label1 = info.data[j].children[k].label
+              obj.label = info.data[j].children[k].label + '(共' + info.data[j].children[k].count + '台）'
+              for(let m = 0; m < obj.children.length; m++) {
+                obj.children[m].label1 = obj.children[m].label
+                obj.children[m].label = obj.children[m].label + '(' + obj.children[m].mac + ')'
+                if (obj.children[m].children !== undefined ) {
+                  for (let n = 0 ; n < obj.children[m].children.length; n++) {
+                    obj.children[m].children[n].label1 = obj.children[m].children[n].label
+                    obj.children[m].children[n].label = obj.children[m].children[n].label + '(' + obj.children[m].children[n].mac + ')'
+                  }
+                }
+              }
+            }
+            obj.apiKey = info.data[j].children[k].apiKey
+            obj.sn = info.data[j].children[k].sn
+            obj.location = info.data[j].children[k].location
+            obj.type = info.data[j].children[k].type
             obj.auth = ''
             obj.alarm = ''
-            obj.online = info.data[j].devices[k].online === 1 ? '在线' : '离线'
+            obj.online = info.data[j].children[k].online
             data[k] = obj
           }
           devicesgroup.children = data
@@ -1261,11 +1514,12 @@ export default {
       if (info.errno === 0) {
         for (let m = 0; m < info.data.length; m++) {
           let obj = {}
-          obj.name = info.data[m].groupName
+          obj.name = info.data[m].label
           obj.id = '选项' + (m + 1)
           obj.groupUid = info.data[m].groupUid
           sets[m] = obj
         }
+     
         this.tableDataGroup = sets
         // console.log(this.tableDataGroup)
       }
@@ -1488,6 +1742,48 @@ export default {
   /* height: 100%;
   overflow: hidden; */
 }
+.addGateway .primary{
+  background: greenyellow;
+}
+.addGateway .streams_box {
+ 
+  margin-top: 5px;
+  padding: 0 25px;
+}
+.addGateway .streams_box .streams_box_title {
+  color: #fff;
+  font-size: 16px;
+  padding: 15px 0;
+}
+.addGateway .streams_box .streams_content {
+  width: 45%;
+  margin-bottom: 12px;
+  float: left;
+}
+.deviaddGatewayceBj .streams_content .streams_content_item {
+  /* display: inline-block; */
+  width: 50%;
+  margin-bottom: 15px;
+  display: inline-flex;
+  flex-direction: column;
+}
+.addGateway .streams_content .streams_item_left {
+  display: inline-block;
+  width: 80px;
+  font-size: 14px;
+  color: #fff;
+  text-align: right;
+}
+.addGateway .streams_content .streams_item_center {
+  display: inline-block;
+  width: 140px;
+  margin-left: 15px;
+  margin-right: 10px;
+}
+.addGateway .streams_content .streams_item_right {
+  display: inline-block;
+}
+
 .addGateway .item_addGateway {
   width: 100%;
   margin-bottom: 15px;
@@ -1758,6 +2054,14 @@ export default {
       text-align: center;
     }
   }
+}
+
+.beilv {
+  width: 70px;
+}
+.subText {
+    text-align: center;
+    margin-top: 5px;
 }
 /* .addGateway .el-dialog {
   box-sizing: border-box;

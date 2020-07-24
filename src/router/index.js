@@ -11,9 +11,12 @@ const userManaget = r => require.ensure([], () => r(require('@/components/home/u
 const indexSet = r => require.ensure([], () => r(require('@/components/home/indexSet')), 'indexSet')
 const Blank = r => require.ensure([], () => r(require('@/components/home/blank')), 'Blank')
 const BlankToDevice = r => require.ensure([], () => r(require('@/components/home/blankToDevice')), 'BlankToDevice')
+const BlankToDevice1 = r => require.ensure([], () => r(require('@/components/home/blankToDevice1')), 'BlankToDevice1')
 const User = r => require.ensure([], () => r(require('@/components/home/user')), 'User')
 const Devices = r => require.ensure([], () => r(require('@/components/home/device')), 'Devices')
 const devicedatas = r => require.ensure([], () => r(require('@/components/home/datapage/devicedata')), 'devicedatas')
+const deviceNb = r => require.ensure([], () => r(require('@/components/home/datapage/devicewatch/deviceNb')), 'deviceNb')
+
 const devicewatchone = r => require.ensure([], () => r(require('@/components/home/dataPage/devicewatch/devicewatch-one')), 'devicewatchone')
 // const devicewatchset = r => require.ensure([], () => r(require('@/components/home/dataPage/devicewatch/devicewatch-set')), 'devicewatchset')
 const devicewatchgroup = r => require.ensure([], () => r(require('@/components/home/dataPage/devicewatch/devicewatch-group')), 'devicewatchgroup')
@@ -27,6 +30,8 @@ const alarmAuthority = r => require.ensure([], () => r(require('@/components/hom
 const alarmSet = r => require.ensure([], () => r(require('@/components/home/alarmPage/alarmSet')), 'alarmSet')
 const historyBase = r => require.ensure([], () => r(require('@/components/home/historyPage/historybase')), 'historyBase')
 const historyInquire = r => require.ensure([], () => r(require('@/components/home/historyPage/historyInquire')), 'historyInquire')
+const historyOnoff = r => require.ensure([], () => r(require('@/components/home/historyPage/historyOnoff')), 'historyOnoff')
+
 const deviceBase = r => require.ensure([], () => r(require('@/components/home/setPage/devicebase')), 'deviceBase')
 const deviceInfo = r => require.ensure([], () => r(require('@/components/home/setPage/deviceInfo')), 'deviceInfo')
 const deviceSetData = r => require.ensure([], () => r(require('@/components/home/setPage/deviceSetData')), 'deviceSetData')
@@ -64,6 +69,11 @@ export default new Router({
           name: 'blankToDevice',
           component: BlankToDevice
         }, // 过渡/检查userId
+        {
+          path: 'blankToDevice1',
+          name: 'blankToDevice1',
+          component: BlankToDevice1
+        }, // 过渡/检查userId
         { path: 'user', name: 'user', component: User }, // 点击头像用户名
         {
           path: 'device', // 主页面顶部公共模板组件
@@ -77,6 +87,7 @@ export default new Router({
                 { path: '', redirect: 'watchone' },
                 // { path: '', redirect: 'watchgroup' },
                 { path: 'watchone', component: devicewatchone },
+                {path: 'deviceNb', component: deviceNb},
                 // { path: 'watchset', component: devicewatchset },
                 { path: 'watchgroup', component: devicewatchgroup },
                 { path: 'remoteControl', component: remoteControl }
@@ -120,6 +131,11 @@ export default new Router({
                   path: 'historyinquire',
                   name: 'historyinquire',
                   component: historyInquire
+                },
+                {
+                  path: 'historyonoff',
+                  name: 'historyonoff',
+                  component: historyOnoff
                 }
               ]
             },

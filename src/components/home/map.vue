@@ -60,10 +60,12 @@ export default {
       currentMayStyle: 'midnight',
       devicehtml: '',
       // 即时推送
-      stompClient: null
+      stompClient: null,
+      titlelogo: ''
     }
   },
   created () {
+    this.titlelogo = sessionGetStore('logo')
     this.param.userId = sessionGetStore('userId')
     this.param.Authorization = sessionGetStore('Authorization')
     // 获取用户的地图主题
@@ -106,6 +108,7 @@ export default {
           obj.mac = response.data[i].mac
           obj.address = ''
           obj.points = []
+          obj.type = response.data[i].type
           if (response.data[i].isWarn === 1) {
             // 存在报警
             obj.online = 2
@@ -177,10 +180,11 @@ export default {
         this.map.addControl(myrefresh)
       }
       // 设置版权标识
+      
       var cr = new BMap.CopyrightControl({anchor: BMAP_ANCHOR_BOTTOM_RIGHT})
       this.map.addControl(cr)
       var bs = this.map.getBounds()
-      cr.addCopyright({id: 1, content: '<img src="/static/logo.png" height=30px/>', bounds: bs})
+      cr.addCopyright({id: 1, content: `<img src=${this.titlelogo} height=30px/>`, bounds: bs})
     },
     // stomp协议数据长连接
     stompLink: function () {
@@ -297,18 +301,33 @@ export default {
               '<span class="class1" style="width:90px">' + this.overlapgroup[i][k].address + '</span><span style="width:20px;float:right;margin:5px;cursor:default" v-on:click="todevice(' + "'" + csObjJSON + "'" + ')">>></span></div></div>',
               methods: {
                 todevice: function (deviceObj) {
+                  // debugger
                   deviceObj = deviceObj.replace(/&#34/g, '"')
                   deviceObj = JSON.parse(deviceObj)
                   console.log(deviceObj)
-                  sessionSetStore('deviceSNNow', deviceObj.sn)
+
+                  if (deviceObj.type!=3) {
+                    sessionSetStore('deviceSNNow', deviceObj.sn)
+                  } else {
+                    sessionSetStore('deviceSNNow', deviceObj.mac)
+                  }
                   sessionSetStore('apikeyNow', deviceObj.apiKey)
                   sessionSetStore('deviceIdNow', deviceObj.devId)
+                  sessionSetStore('nbmac', deviceObj.mac)
                   if (deviceObj.online === 2) {
                     // 报警---前往报警统计页
-                    Routers.push({ path: '/home/device/alarm/alarmStatistics' })
+                    Routers.push({ path: '/home/device/data/watchone' })
                   } else {
                     // 在线或者离线---前往设备管理页
-                    Routers.push({ path: '/home/device/set/deviceManage' })
+                    if (deviceObj.type==3 ) {
+                      this.$bus.$emit('isnb', true)
+                      sessionSetStore('isnb', true)
+                      Routers.push({ path: '/home/device/set/deviceinfo' })
+                    } else {
+                      sessionSetStore('isnb', false)
+                      Routers.push({ path: '/home/device/set/deviceManage' })
+                    }
+                    
                   }
                 }
               }
@@ -345,7 +364,7 @@ export default {
                     sessionSetStore('deviceIdNow', deviceObj.devId)
                     if (deviceObj.online === 2) {
                       // 报警---前往报警统计页
-                      Routers.push({ path: '/home/device/alarm/alarmStatistics' })
+                      Routers.push({ path: '/home/device/data/watchone' })
                     } else {
                       // 在线或者离线---前往设备管理页
                       Routers.push({ path: '/home/device/set/deviceManage' })

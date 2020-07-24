@@ -323,6 +323,148 @@ export const onenet = {
 
 // 后台接口
 export const back = {
+  nbdeviceput (param) {
+    return axios({
+      url: `${url.backbasurl}/api/nb/device`,
+      data: param,
+      method: 'put',
+      headers: {
+        userId: param.userId
+      }
+    })
+      .then(response => {
+        return response.data
+      })
+      .catch(error => {
+        console.log(error)
+      })
+  },
+  // 获取nb 设备详情
+  nbdevice (param) {
+    return axios({
+      url: `${url.backbasurl}/api/nb/device`,
+      params: param,
+      method: 'get'
+    })
+      .then(response => {
+        return response.data
+      })
+      .catch(error => {
+        console.log(error)
+      })
+  },
+  // 获取nb报警类型
+  nbwarnType (param) {
+    return axios({
+      url: `${url.backbasurl}/api/v2/trigger/warnType`,
+      params: param,
+      method: 'get'
+    })
+      .then(response => {
+        return response.data
+      })
+      .catch(error => {
+        console.log(error)
+      })
+  },
+  // nb设备状态修改
+  nbcommand (param) {
+    return axios({
+      url: `${url.backbasurl}/api/nb/device/command`,
+      params: param,
+      method: 'get'
+    })
+      .then(response => {
+        return response.data
+      })
+      .catch(error => {
+        console.log(error)
+      })
+  },
+  
+  // nb数据历史查询
+  nbhistory (param) {
+    return axios({
+      url: `${url.backbasurl}/api/nb/device/history/page/time`,
+      params: param,
+      method: 'get'
+    })
+      .then(response => {
+        return response.data
+      })
+      .catch(error => {
+        console.log(error)
+      })
+  },
+  // 获取NB网关下监控点列表
+  relatioNbstreams (param) {
+    return axios({
+      url: `${url.backbasurl}/api/v2/relation/netgate/streams`,
+      params: param,
+      method: 'get'
+    })
+      .then(response => {
+        return response.data
+      })
+      .catch(error => {
+        console.log(error)
+      })
+  },
+  // nb设备 数据监测
+
+  getnbcurrent (param) {
+    return axios({
+      url: `${url.backbasurl}/api/nb/device/current/group`,
+      method: 'get',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      params: param
+    })
+      .then(response => {
+        return response.data
+      })
+      .catch(error => {
+        console.log(error)
+      })
+  },
+  //设备列表拖拽排序
+
+  gotableSort (param) {
+    return axios({
+      url: `${url.backbasurl}/api/util/tableSort`,
+      method: 'put',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      data: param
+    })
+      .then(response => {
+        return response.data
+      })
+      .catch(error => {
+        console.log(error)
+      })
+  },
+
+  // 新增设备上下线记录
+  getonlinelog (param) {
+    return axios({
+      url: `${url.backbasurl}/api/device/online/log?page=${param.page}&&size=${param.size}&&mac=${param.mac}`,
+      method: 'get',
+      headers: {
+        'Content-Type': 'application/json'
+       
+      },
+      data: {}
+    })
+      .then(response => {
+        return response.data
+      })
+      .catch(error => {
+        console.log(error)
+      })
+  },
   // 1.用户模块
   // 1.1 用户注册
   userRegister (param) {
@@ -351,6 +493,7 @@ export const back = {
   userLogin (param) {
     return axios({
       url: `${url.backbasurl}/api/user/login`,
+      // url: `http://261x1857y9.zicp.vip/api/user/login`,
       method: 'post',
       headers: {
         'Content-Type': 'application/json'
@@ -498,6 +641,26 @@ export const back = {
         console.log(error)
       })
   },
+  // 新增nb网关
+  addnbdevice (param) {
+    return axios({
+      url: `${url.backbasurl}/api/nb/device`,
+      method: 'post',
+      headers: {
+        'Content-Type': 'application/json',
+        userId: param.userId
+        // 'Authorization': param.Authorization
+      },
+      data: param
+    })
+      .then(response => {
+        return response.data
+      })
+      .catch(error => {
+        console.log(error)
+      })
+  },
+  
   // 2.2 新增网关分组
   addNetGroup (param) {
     return axios({
@@ -813,6 +976,7 @@ export const back = {
   userDevQue (param) {
     return axios({
       url: `${url.backbasurl}/api/relation/user/netgates`,
+      // url: `http://yapi.thingcom.com/mock/47/api/v2/relation/user/netgates`,
       method: 'get',
       headers: {
         'Content-Type': 'application/json',
@@ -846,7 +1010,7 @@ export const back = {
   // 4.3 获取网关下监控点列表
   relatioMonitorPoint (param) {
     return axios({
-      url: `${url.backbasurl}/api/relation/netgate/streams?sn=${
+      url: `${url.backbasurl}/api/v2/relation/netgate/streams?sn=${
         param.sn
       }`,
       method: 'get'
@@ -1043,9 +1207,9 @@ export const back = {
   // 6.4  获取历史报警
   getHisTrigger (param) {
     return axios({
-      url: `${url.backbasurl}/api/trigger/data/history?sn=${
-        param.sn
-      }&startTime=${param.startTime}&endTime=${param.endTime}`,
+      url: `${url.backbasurl}/api/trigger/data/history/page?condition=${
+        param.condition
+      }&start=${param.start}&end=${param.end}&type=${param.type}&page=${param.page}&size=${param.size}`,
       method: 'get',
       headers: {
         'Content-Type': 'application/json',
@@ -1298,6 +1462,8 @@ export const back = {
   userInfoListQue (param) {
     return axios({
       url: `${url.backbasurl}/api/manager/user/list`,
+      // url: `http://261x1857y9.zicp.vip/api/manager/user/list`,
+      
       method: 'get',
       headers: {
         'Content-Type': 'application/json',
@@ -1338,7 +1504,7 @@ export const back = {
   // 获取oss签名数据
   ossInfo () {
     return axios({
-      url: `http://picture.thingcom.com/web/token`,
+      url: `https://picture.thingcom.cn/web/token`,
       method: 'get',
       headers: {},
       data: {}
@@ -1350,6 +1516,26 @@ export const back = {
         console.log(error)
       })
   },
+  userUi (param) {
+    return axios({
+      url: `${url.backbasurl}/api/v2/manager/user/ui`,
+      // url: `http://261x1857y9.zicp.vip/api/v2/manager/user/ui`,
+      method: 'put',
+      headers: {
+        'Content-Type': 'application/json',
+        userId: param.userId
+      },
+      data: param
+    })
+      .then(response => {
+        return response.data
+      })
+      .catch(error => {
+        console.log(error)
+      })
+  },
+
+  
   // 8. 数据统计模块
   // 8.1 设备在线状态统计
   statueStatistics (param) {
@@ -1553,6 +1739,22 @@ export const back = {
         console.log(error)
       })
   },
+  getonenet (param) {
+    return axios({
+      url: `${url.backbasurl}/api/analyze/device/onenet?mac=${param.mac}&&contentType=${param.contentType}`,
+      method: 'get',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      data: {}
+    })
+      .then(response => {
+        return response.data
+      })
+      .catch(error => {
+        console.log(error)
+      })
+  },
   // 10. 其他
   // 10.1 获取地图所有主题风格
   getMapAllStyle (param) {
@@ -1572,6 +1774,7 @@ export const back = {
         console.log(error)
       })
   },
+  
   // 10.2 设置地图主题
   setMapStyle (param) {
     return axios({

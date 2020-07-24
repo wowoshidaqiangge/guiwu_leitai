@@ -3,14 +3,27 @@
     <div class="history_search">
       <div class="jkd_chose_box">
         <span>设备选择：</span>
-        <el-select 
+        <!-- <el-select 
           class="jkd_chose"
           size="small"
           v-model="deviceSelected" 
           placeholder="请选择"
         >
           <el-option v-for="item in deviceListInfo" :key="item.collectorUId" :label="item.name" :value="item.mac"></el-option>
-        </el-select>
+        </el-select> -->
+        <el-autocomplete
+          popper-class="my-autocomplete"
+          v-model="deviceSelected"
+          :fetch-suggestions="querySearch"
+          placeholder="请输入内容"
+          :clearable="true"
+          size="mini"
+          @select="handleSelect">
+          <template slot-scope="{ item }">
+            <div class="name">{{ item.name }}</div>
+          
+          </template>
+        </el-autocomplete>
       </div>
       <div class="date_chose_box">
         <div class="date_chose">开始日期
@@ -92,8 +105,9 @@
           </el-table-column>
           <el-table-column
             v-for="(item, index) in sensorNameArr"
+           
             :key="index"
-            :prop="'CH'+index"
+            :prop="item.prop? item.prop:'CH'+index"
             header-align="center"
             :label="item.name">
           </el-table-column>
@@ -112,7 +126,8 @@
 
 <script>
 import { back, onenet } from 'api'
-import { sessionGetStore } from '@/components/config/Utils'
+import { sessionGetStore, export2Excel } from '@/components/config/Utils'
+
 export default {
   data () {
     return {
@@ -137,6 +152,21 @@ export default {
       sensorNameArr: [
         // { name: '传感器1', sensorId: 1, mac: '' }
       ],
+      sensorNameArr1: [
+        {prop:'value1', name:'远控1'},
+        {prop:'value2', name:'远控2'},
+        {prop:'value3', name:'远控3'},
+        {prop:'value4', name:'远控4'},
+        {prop:'value5', name:'电平跳变1'},
+        {prop:'value6', name:'电平跳变2'},
+        {prop:'value7', name:'电平跳变3'},
+        {prop:'value8', name:'电平跳变4'},
+        {prop:'value9', name:'电平跳变5'},
+        {prop:'value10', name:'脉冲次数'},
+        {prop:'value11', name:'电压'},
+        {prop:'value12', name:'电流'},
+       
+      ],
       // 实际存储当前页面中的设备的查询到的历史数据信息
       monitorPointData: [{
         number: '',
@@ -146,6 +176,7 @@ export default {
         CH3: '',
         CH4: ''
       }],
+      restaurants:[],
       tableIsShow: false, // 表格显示状态
       valueStart: '',             // 开始日期
       valueEnd: '',              // 结束日期
@@ -193,18 +224,24 @@ export default {
     }
   },
   created () {
+   
     this.param.sn = sessionGetStore('deviceSNNow')
     this.param.userId = sessionGetStore('userId')
     this.param.Authorization = sessionGetStore('Authorization')
+    this.param.apiKey = sessionGetStore('apikeyNow')
+    this.param.deviceId = sessionGetStore('deviceIdNow')
     // back获取apikey,deviceId
-    back.getNetInfo(this.param).then(function (response) {
-      if (response.errno !== 0) {
-        this.notificationInfo('错误提示', response.error)
-        return
-      }
-      this.param.apiKey = response.data.apiKey
-      this.param.deviceId = response.data.deviceId
-    }.bind(this))
+    // if (sessionGetStore('isnb') !=='true') {
+    //   back.getNetInfo(this.param).then(function (response) {
+    //     if (response.errno !== 0) {
+    //       this.notificationInfo('错误提示', response.error)
+    //       return
+    //     }
+    //     this.param.apiKey = response.data.apiKey
+    //     this.param.deviceId = response.data.deviceId
+    //   }.bind(this))
+    // }
+    
 
     // 表格最大高度
     var reduceHeight = 70 + 39 + 135
@@ -253,6 +290,9 @@ export default {
     this.monitorPointData = []
     // 查询网关下监控点信息（重新渲染组件时操作）
     this.backDevInfoQue()
+
+
+    //  this.getnbhistory()
     // 监听屏幕高度
     const that = this
     window.onresize = () => {
@@ -302,11 +342,10 @@ export default {
         this.notificationInfo('错误提示：', '开始时间不能大于结束时间')
         return
       }
-
       var index // 选择框选中设备的index
       // 遍历设备列表，根据mac地址来判断选择的设备是哪个
       for (let i = 0; i < this.deviceListInfo.length; i++) {
-        if (this.deviceSelected === this.deviceListInfo[i].mac) {
+        if (this.deviceSelected === this.deviceListInfo[i].name) {
           var sensorListArr = []
           for (var j = 0; j < this.deviceListInfo[i].streams.length; j++) {
             if (this.deviceListInfo[i].streams[j].auth === 1) {
@@ -315,7 +354,8 @@ export default {
           }
           // 设备对应的传感器名称数组
           this.sensorNameArr = sensorListArr
-          // console.log(this.sensorNameArr)
+          console.log(this.deviceListInfo)
+          console.log(this.sensorNameArr)
           // 设备在设备列表中的index
           index = this.deviceListInfo[i].index
         }
@@ -328,6 +368,7 @@ export default {
       }
       excelTitleStr += '\n'
       this.excelDataStr = excelTitleStr
+      // debugger
       this.param.startTime = this.valueStart
       this.param.endTime = this.valueEnd
       // 页面判断相关变量，cursor数组复位
@@ -362,12 +403,18 @@ export default {
         datastreamId[j] = streams[j].streamId
       }
       this.param.datastreamId = datastreamId
+      this.param.condition = this.nbcondition
       // onenet查询数据 or 下载数据
       if (!this.isDownLoad) {
         // ...查询数据
         this.loadingText = '拼命加载中'
         // onenet查询近期最多limit个历史数据---初始查询
-        this.onenetOneHistoryQuery()
+        if (sessionGetStore('isnb') ==='true') {
+            this.getnbhistory()
+        } else {
+          this.onenetOneHistoryQuery()
+        }
+        
       } else {
         // ...下载数据...只允许下载一个月数据
         let dataLimit = 30 * 24 * 60 * 60 * 1000
@@ -379,8 +426,90 @@ export default {
         this.loadingText = '拼命加载中...'
         let deviceName
         deviceName = this.deviceListInfo[index].name
-        this.onenetOneHistoryQueryAll(deviceName)
+        
+        if (sessionGetStore('isnb') ==='true') {
+          this.getnbhistory1(deviceName)
+        } else {
+          this.onenetOneHistoryQueryAll(deviceName)
+        }
       }
+    },
+    // 查询nb设备
+
+    getnbhistory () {
+      var obj = {
+        condition: this.nbcondition,
+        size: 50,
+        page: 1,
+        start: this.valueStart.replace('T', ' '),
+        end: this.valueEnd.replace('T', ' ')
+      }
+      console.log(obj)
+      back.nbhistory(obj).then(function (response) {
+       
+        this.loadingFlag = false
+        if (response.errno == 0) {
+          if ( !Array.isArray(response.data.record) || response.data.record.length < 0) {
+             this.notificationInfo('错误提示', '暂无数据')
+             return
+          }
+          let arr = []
+          response.data.record.map((item, index) => {
+            let obj = {}
+            obj.time = item.time
+            obj.number = index + 1
+            item.datas.map(v => {
+              obj[`value${v.streamId}`] = v.value
+            })
+            arr.push(obj)
+          })
+          this.monitorPointData = arr
+          this.sensorNameArr = this.sensorNameArr1
+          this.tableIsShow = true
+         
+          console.log(arr)
+        } else {
+          this.notificationInfo('错误提示', response.error)
+        }
+      }.bind(this))
+    },
+    getnbhistory1 (name) {
+      var obj = {
+        condition: this.nbcondition,
+        size: 50,
+        page: 1,
+        start: this.valueStart.replace('T', ' '),
+        end: this.valueEnd.replace('T', ' ')
+      }
+      console.log(obj)
+      back.nbhistory(obj).then(function (response) {
+       
+        this.loadingFlag = false
+        if (response.errno == 0) {
+          if ( !Array.isArray(response.data.record) || response.data.record.length < 1 ) {
+            this.notificationInfo('错误提示', '暂无数据')
+            return
+          }
+          let arr = []
+          response.data.record.map((item, index) => {
+            let obj = {}
+            obj.time = item.time
+            obj.number = index + 1
+            item.datas.map(v => {
+              obj[`value${v.streamId}`] = v.value
+            })
+            arr.push(obj)
+          })
+       
+          let a = JSON.parse(JSON.stringify(this.sensorNameArr1))
+          a.unshift({prop:'number', name: '序号'}, {prop: 'time', name: '时间'})
+          export2Excel(a, arr, name)
+          this.isDownLoad = false
+          console.log(arr)
+        } else {
+          this.notificationInfo('错误提示', response.error)
+        }
+      }.bind(this))
     },
     // 上一页触发按钮 不请求数据而是调用缓存已查询数据
     pageUpBtn: function () {
@@ -494,7 +623,6 @@ export default {
     },
     // 合并历史数据数组---没值的补值
     mergeArrfunc (resData) {
-      // console.log(resData)
       // 合并的时间数组
       let timeMergeArr = []
       // 合并的数据数组
@@ -525,10 +653,17 @@ export default {
         }
         mergeDataArr.push(obj)
       }
-      // console.log(mergeDataArr)
+       console.log(resData)
+      console.log(mergeDataArr)
       // 数值赋值
       // 遍历外层大数组的每个监控点
       for (let h = 0; h < resData.length; h++) {
+        let coefficient = 1
+        for (let m = 0; m < this.sensorNameArr.length; m++) {
+          if (resData[h].id === this.sensorNameArr[m].streamId && this.sensorNameArr[m].coefficient!==undefined) {
+            coefficient = this.sensorNameArr[m].coefficient
+          }
+        }
         // 遍历数据初始化的数组
         for (let i = 0; i < mergeDataArr.length; i++) {
           // 遍历外层大数组的每个监控点的每个历史信息
@@ -536,7 +671,7 @@ export default {
             // 先修改每个时间点本身有的值
             if (mergeDataArr[i].time === resData[h].datapoints[j].at) {
               // console.log('1')
-              mergeDataArr[i]['CH' + h] = resData[h].datapoints[j].value
+              mergeDataArr[i]['CH' + h] = resData[h].datapoints[j].value*coefficient
             }
           }
           // 补值操作
@@ -544,7 +679,7 @@ export default {
             // 如果数据数组中，某个监控点没有数据
             if (i === 0) {
               // 如果是第1行数据---每个值都取各自监控点的第1条数据的值
-              mergeDataArr[0]['CH' + h] = resData[h].datapoints[0].value
+              mergeDataArr[0]['CH' + h] = resData[h].datapoints[0].value*coefficient
             } else {
               // 每个值都取各自监控点的上1条数据的值
               mergeDataArr[i]['CH' + h] = mergeDataArr[i - 1]['CH' + h]
@@ -585,6 +720,23 @@ export default {
         this.deviceListInfo = deviceListdata
       }.bind(this))
     },
+    querySearch(queryString, cb) {
+        var restaurants = this.deviceListInfo;
+        var results = queryString ? restaurants.filter(this.createFilter(queryString)) : restaurants;
+        // 调用 callback 返回建议列表的数据
+        cb(results)
+      },
+      handleSelect(item) {
+        console.log(item)
+        this.deviceSelected = item.name
+        this.nbcondition = item.mac
+      },
+    
+      createFilter(queryString) {
+        return (restaurant) => {
+          return (restaurant.name.toLowerCase().indexOf(queryString.toLowerCase()) >= 0);
+        };
+      },
     // *************   onenet   **************
     // onenet查询近期最多limit个历史数据
     onenetOneHistoryQuery: function () {
@@ -598,6 +750,7 @@ export default {
           this.loadingFlag = false
           return
         }
+      
         // cursor存储
         if (response.data.cursor !== undefined) this.cursorArr.push(response.data.cursor)
         // 页面变量初始化  已查到一页数据后才会初始化。
@@ -642,6 +795,7 @@ export default {
           this.loadingFlag = false
           return
         }
+      
         // cursor存储
         // ...1.下一页查询 2.cursor不重复 3.response.data.cursor有值 => push新cursor到cursorArr数组中去
         if (this.pageDownOrUp && response.data.cursor !== undefined && this.pageCurNum > this.pageDownBackNum) {
@@ -713,6 +867,7 @@ export default {
           this.loadingFlag = false
           return
         }
+      
         // 页面变量初始化
         this.pageLeftNum--
         // streamId正序排序
@@ -720,7 +875,7 @@ export default {
         
         // 合并历史数据数组---没值的补值
         var limitDataArr = this.mergeArrfunc(response.data.datastreams)
-
+       
         // 判断是否包含 去头添尾或者添头去尾 的操作
         if (this.limitData.length < 5) {
           // 不包含
@@ -738,7 +893,7 @@ export default {
             this.limitData.unshift(limitDataArr) // 添头：在开头增加1项
           }
         }
-
+    
         // 判断是否记录页数
         if (this.pageCurNum >= this.pageTotalNum.length) {
           // 记录当前页的数据条数
@@ -779,6 +934,7 @@ export default {
       // console.log(this.pageTotalNum)
       // pageCurNum
       let data = this.limitData[this.pageDataNum - 1]
+     
       // 转化序号，因为this.limitdata保存的最多是[0,999... 4000,4999]
       var baseNum = 0
       for (let i = 0; i < this.pageCurNum; i++) {
@@ -788,7 +944,7 @@ export default {
         data[i].number = baseNum + i + 1
       }
       this.monitorPointData = data
-      // console.log(this.monitorPointData)  
+      console.log(this.monitorPointData)  
       // 对应的折线图也实现相应功能
       if (!this.dataListView) {
         this.dataChartBtn()
@@ -945,12 +1101,22 @@ export default {
       // var yData2 = []
       // var yData3 = []
       // var yData4 = []
-      for (let i = 0; i < this.monitorPointData.length; i++) {
-        xData[i] = this.monitorPointData[i].time
-        for (var j = 0; j < this.sensorNameArr.length; j++) {
-          yData[j][i] = this.monitorPointData[i]['CH' + j]
+      if (sessionGetStore('isnb') ==='true') {
+        for (let i = 0; i < this.monitorPointData.length; i++) {
+          xData[i] = this.monitorPointData[i].time
+          for (var j = 0; j < this.sensorNameArr.length; j++) {
+            yData[j][i] = this.monitorPointData[i][`value${j+1}`]
+          }
+        }
+      } else {
+        for (let i = 0; i < this.monitorPointData.length; i++) {
+          xData[i] = this.monitorPointData[i].time
+          for (var j = 0; j < this.sensorNameArr.length; j++) {
+            yData[j][i] = this.monitorPointData[i]['CH' + j]
+          }
         }
       }
+      // debugger
       // var _this = this
       // 折线图表高宽度自适应
       let chartBox = document.getElementsByClassName('chartview')[0]
@@ -1104,7 +1270,7 @@ export default {
       document.body.removeChild(link)
       // 每一次下载表格之后，对this.excelDataStr / this.limitDataCurLengthOld / this.isDownLoad复位操作
       // window.open(objectUrl, 'newwindow', 'height=100, width=400, top=0, left=0, toolbar=no, menubar=no, scrollbars=no, resizable=no,location=n o, status=no')
-
+      // debugger
       var excelTitleStr = '序号' + ',' + '时间' 
       for (var i = 0; i < this.sensorNameArr.length; i++) {
         excelTitleStr += ',' + this.sensorNameArr[i].name
